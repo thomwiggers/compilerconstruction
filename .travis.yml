@@ -1,6 +1,22 @@
-language: haskell
-ghc: 8.0
+language: generic
 sudo: false
 
+matrix:
+    include:
+        - env: CABALVER=1.24 GHCVER=8.0.2
+          addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.2], sources: [hvr-ghc]}}
+
 before_install:
+    - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
     - cd splc
+
+install:
+    - cabal --version
+    - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
+    - travis_retry cabal update
+    - cabal install -j --only-dependencies --enable-tests
+
+script:
+    - cabal configure --enable-tests --enable-coverage
+    - cabal build
+    - cabal test --show-details=always --test-option=--qc-max-success=1000
