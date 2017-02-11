@@ -1,5 +1,6 @@
 language: haskell
 ghc: 8.0
+sudo: false
 
 before_install:
     - cd splc
