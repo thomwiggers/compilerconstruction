@@ -42,7 +42,15 @@ spec = do
             parseBasicType "Bool" `shouldParse` SplBool
         it "doesn't parse anything else" $ property $
             \x -> not (x `elem` ["Int", "Bool", "Char"]) ==> parseBasicType `shouldFailOn` x
+    describe "unaryOperator" $ do
+        it "parses invert" $
+            parseUnaryOperator "!" `shouldParse` SplOperatorInvert
+        it "parses negate" $
+            parseUnaryOperator "-" `shouldParse` SplOperatorNegate
+        it "doesn't parse anythign else" $ property $
+            \x -> not (x `elem` ["-", "!"]) ==> parseBasicType `shouldFailOn` x
     where
         parseIdentifier = parse identifier ""
         parseInt = parse int ""
         parseBasicType = parse basicType ""
+        parseUnaryOperator = parse unaryOperator ""
