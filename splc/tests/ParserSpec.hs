@@ -5,7 +5,7 @@ import Test.Hspec.Megaparsec
 import Test.QuickCheck
 import Text.Megaparsec
 
-import SplcParser
+import SplParser
 
 spec :: Spec
 spec = do
@@ -33,6 +33,16 @@ spec = do
             forAll (elements reserved) $ \x -> parseIdentifier `shouldFailOn` x
         it "should parse words" $
             parseIdentifier "test" `shouldParse` "test"
+    describe "basicType" $ do
+        it "parses Int" $
+            parseBasicType "Int" `shouldParse` SplInt
+        it "parses Char" $
+            parseBasicType "Char" `shouldParse` SplChar
+        it "parses Bool" $
+            parseBasicType "Bool" `shouldParse` SplBool
+        it "doesn't parse anything else" $ property $
+            \x -> not (x `elem` ["Int", "Bool", "Char"]) ==> parseBasicType `shouldFailOn` x
     where
         parseIdentifier = parse identifier ""
         parseInt = parse int ""
+        parseBasicType = parse basicType ""

@@ -1,9 +1,11 @@
-module SplcParser where
+module SplParser where
 
 import Control.Monad (void)
 import Text.Megaparsec
 import Text.Megaparsec.String
 import qualified Text.Megaparsec.Lexer as L
+
+data SplType = SplBool | SplInt | SplChar deriving (Show, Eq)
 
 -- eats spaces and comments
 sc :: Parser ()
@@ -25,6 +27,12 @@ symbol = L.symbol sc
 int :: Parser Integer
 int = L.signed (void $ string "") (lexeme L.integer)
 
+-- Makes sure we read a bare word, useful for keywords etc.
+readWord :: String -> Parser String
+readWord w = do
+    string w *> notFollowedBy alphaNumChar *> sc
+    return w
+
 -- Reserved words
 reserved :: [String]
 reserved = ["if", "else", "while", "return", "True", "False"]
@@ -39,3 +47,13 @@ identifier = (lexeme . try) (parser >>= check)
         check x = if x `elem` reserved
                     then fail $ show x ++ " is a reserved keyword"
                     else return x
+
+-- read a basic type
+basicType :: Parser SplType
+basicType = do
+    t <- (readWord "Int" <|> readWord "Bool" <|> readWord "Char") <?> "type of either Int, Bool or Char"
+    case t of
+        "Int" -> return SplInt
+        "Bool" -> return SplBool
+        "Char" -> return SplChar
+        _ -> fail "(Error in parser): Unexpected type"
