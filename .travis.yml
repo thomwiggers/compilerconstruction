@@ -17,6 +17,6 @@ install:
     - cabal install -j --only-dependencies --enable-tests
 
 script:
-    - cabal configure --enable-tests --enable-coverage
+    - cabal configure --enable-tests
     - cabal build
     - cabal test --show-details=always --test-option=--qc-max-success=1000
