@@ -29,6 +29,10 @@ spec = do
             parseIdentifier "x_x" `shouldParse` "x_x"
         it "parses strings with later numbers" $
             parseIdentifier "x3x" `shouldParse` "x3x"
+        it "should not parse keywords" $ property $
+            forAll (elements reserved) $ \x -> parseIdentifier `shouldFailOn` x
+        it "should parse words" $
+            parseIdentifier "test" `shouldParse` "test"
     where
         parseIdentifier = parse identifier ""
         parseInt = parse int ""
