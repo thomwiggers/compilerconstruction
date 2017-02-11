@@ -1,0 +1,4 @@
+*.hs    text
+*.cabal text
+*.md    text
+LICENSE text
