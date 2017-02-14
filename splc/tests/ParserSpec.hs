@@ -121,6 +121,8 @@ spec = do
             parseSpl `shouldFailOn` ""
         it "Parses a single untyped variable declaration" $
             parseSpl "var x = 3;" `shouldParse` (Spl [SplDeclVar ((SplVarDecl SplTypeUnknown) "x" (SplIntLiteralExpr 3))])
+        it "Parses a function definition without args or types" $
+            parseSpl "fun () { return 1; }" `shouldParse` (Spl [SplDeclFun "fun" [] [] (SplRetType SplTypeUnknown) [] [SplReturnStmt literalOne]])
     where
         literalOne = SplIntLiteralExpr 1
         literalTrue = SplBooleanLiteralExpr True

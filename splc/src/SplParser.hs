@@ -1,6 +1,6 @@
 module SplParser where
 
-import Control.Monad (void)
+import Control.Monad (void, when)
 import Text.Megaparsec
 import Text.Megaparsec.Expr
 import Text.Megaparsec.String
@@ -13,7 +13,7 @@ data Spl = Spl [SplDecl]
 -- Decl = VarDecl | FunDecl
 data SplDecl = SplDeclVar (SplVarDecl) -- nested because we need vardecl seperately
                          -- id ( fargs ) [ :: type ] { VarDecl* Stmt+ }
-             | SplFunDecl String [String] [SplRetType] SplRetType [SplVarDecl] [SplStmt]
+             | SplDeclFun String [String] [SplType] SplRetType [SplVarDecl] [SplStmt]
     deriving (Show, Eq)
 
                 -- (var | Type) id = expr ;
@@ -97,7 +97,7 @@ parseDecls = some $
 -- variable declarations
 varDecl :: Parser SplVarDecl
 varDecl = do
-    t <- ((readWord "var" *> return SplTypeUnknown) <|> (SplType <$> basicType)) <?> "var or a type"
+    t <- ((readWord "var" *> return SplTypeUnknown) <|> parseType) <?> "var or a type specification"
     i <- identifier
     _ <- symbol "="
     e <- expr
@@ -106,7 +106,26 @@ varDecl = do
 
 -- function declarations
 funDecl :: Parser SplDecl
-funDecl = fail "Not implemented"
+funDecl = do
+    name <- identifier
+    args <- between (symbol "(") (symbol ")") $ identifier `sepBy` symbol ","
+    (argTypes, retType) <- option ([], SplRetType SplTypeUnknown) $ string "::" *> sc *> parseFunTypes
+    when (length argTypes /= length args) $ fail "Number of arguments and types does not match"
+    let varDecls = []
+    let stmts = [SplReturnStmt (SplIntLiteralExpr 1)]
+    -- todo parse vardecl* statements+
+    return $ SplDeclFun name args argTypes retType varDecls stmts
+    where
+        parseFunTypes :: Parser ([SplType], SplRetType)
+        parseFunTypes = do
+            args <- option [] $ (parseType `endBy` (string "->" *> sc))
+            retType <- (SplRetType <$> parseType) <|> pvoid
+            return (args, retType)
+        pvoid = readWord "Void" *> return SplRetVoid
+
+-- Type parser
+parseType :: Parser SplType
+parseType = SplType <$> basicType
 
 -- Read an expression
 expr :: Parser SplExpr
