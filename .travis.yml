@@ -19,4 +19,4 @@ install:
 script:
     - cabal configure --enable-tests
     - cabal build
-    - cabal test --show-details=always --test-option=--qc-max-success=1000
+    - cabal test --show-details=direct --test-option=--qc-max-success=10000
