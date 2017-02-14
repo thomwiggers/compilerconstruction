@@ -2,6 +2,7 @@ module SplParser where
 
 import Control.Monad (void)
 import Text.Megaparsec
+import Text.Megaparsec.Expr
 import Text.Megaparsec.String
 import qualified Text.Megaparsec.Lexer as L
 
@@ -53,7 +54,7 @@ data SplField = SplFieldHd SplField
 
                -- id [.field]
 data SplExpr = SplIdentifierStmt String SplField
-             | SplBinaryExpr SplExpr SplBinaryOperator SplExpr
+             | SplBinaryExpr SplBinaryOperator SplExpr SplExpr
              | SplUnaryExpr SplUnaryOperator SplExpr
              | SplIntLiteralExpr Integer
              | SplCharLiteralExpr Char
@@ -93,6 +94,7 @@ parseDecls = some $
     ((SplDeclVar <$> varDecl) <?> "Variable definition")
     <|> (funDecl <?> "Function definition")
 
+-- variable declarations
 varDecl :: Parser SplVarDecl
 varDecl = do
     t <- ((readWord "var" *> return SplTypeUnknown) <|> (SplType <$> basicType)) <?> "var or a type"
@@ -102,12 +104,57 @@ varDecl = do
     _ <- symbol ";"
     return $ SplVarDecl t i e
 
+-- function declarations
 funDecl :: Parser SplDecl
 funDecl = fail "Not implemented"
 
 -- Read an expression
 expr :: Parser SplExpr
-expr = (SplIntLiteralExpr <$> int)
+expr = makeExprParser exprTerms operators
+
+exprTerms :: Parser SplExpr
+exprTerms = (SplIntLiteralExpr <$> int)
+        <|> (SplBooleanLiteralExpr <$> bool)
+        <|> (SplCharLiteralExpr <$> character)
+        <|> (between (symbol "(") (symbol ")") expr <?> "Subexpression")
+
+-- binary operators
+operators :: [[Operator Parser SplExpr]]
+operators = [
+        [
+            Prefix (SplUnaryExpr SplOperatorNegate <$ symbol "-"),
+            Prefix (SplUnaryExpr SplOperatorInvert <$ symbol "~")
+        ],
+        [
+            InfixL (SplBinaryExpr SplOperatorMultiply <$ symbol "*"),
+            InfixL (SplBinaryExpr SplOperatorDivide <$ symbol "/"),
+            InfixL (SplBinaryExpr SplOperatorModulus <$ symbol "%")
+        ],
+        [
+            InfixL (SplBinaryExpr SplOperatorAdd <$ symbol "+"),
+            InfixL (SplBinaryExpr SplOperatorSubtract <$ symbol "-")
+        ],
+        [
+            InfixL (SplBinaryExpr SplOperatorLessEqual <$ readOperator "<="),
+            InfixL (SplBinaryExpr SplOperatorLess <$ readOperator "<"),
+            InfixL (SplBinaryExpr SplOperatorEqual <$ readOperator "=="),
+            InfixL (SplBinaryExpr SplOperatorGreaterEqual <$ readOperator ">="),
+            InfixL (SplBinaryExpr SplOperatorGreater <$ readOperator ">"),
+            InfixL (SplBinaryExpr SplOperatorNotEqual <$ readOperator "!=")
+        ],
+        [
+            InfixL (SplBinaryExpr SplOperatorAnd <$ readOperator "&&")
+        ],
+        [
+            InfixL (SplBinaryExpr SplOperatorOr <$ readOperator "||")
+        ],
+        [
+            InfixR (SplBinaryExpr SplOperatorCons <$ symbol ":")
+        ]
+    ]
+    where
+        readOperator :: String -> Parser ()
+        readOperator s = void (string s) <* sc
 
 -- eats spaces and comments
 sc :: Parser ()
@@ -127,7 +174,7 @@ symbol = L.symbol sc
 
 -- Parse an integer
 int :: Parser Integer
-int = L.signed (void $ string "") (lexeme L.integer)
+int = (L.signed (void $ string "") (lexeme L.integer)) <?> "Integer literal"
 
 -- Makes sure we read a bare word, useful for keywords etc.
 readWord :: String -> Parser String
@@ -150,6 +197,26 @@ identifier = (lexeme . try) (parser >>= check)
                     then fail $ show x ++ " is a reserved keyword"
                     else return x
 
+-- Parse boolean literals
+bool :: Parser Bool
+bool = do
+    w <- (readWord "True" <|> readWord "False") <?> "Boolean literal"
+    return (w == "True")
+
+-- Parse character literals
+character :: Parser Char
+character = label "Character literal" $ between (char '\'') (char '\'') theChar
+    where
+    theChar = choice $ escapes ++ [anyChar]
+    escapes :: [Parser Char]
+    escapes = map themap [
+        ("\\n", '\n'), ("\\t", '\t'), ("\\r", '\r'), ("\\'", '\''),
+        ("\\\\", '\\')]
+    themap :: (String, Char) -> Parser Char
+    themap (s, c) = do
+        _ <- string s
+        return $ c
+
 -- read a basic type
 basicType :: Parser SplBasicType
 basicType = do
@@ -159,12 +226,3 @@ basicType = do
         "Bool" -> return SplBool
         "Char" -> return SplChar
         _ -> fail "(Error in parser): Unexpected type"
-
--- Parse Unary operators
-unaryOperator :: Parser SplUnaryOperator
-unaryOperator = do
-    t <- (readWord "-" <|> readWord "!") <?> "Unary operator"
-    case t of
-        "-" -> return SplOperatorNegate
-        "!" -> return SplOperatorInvert
-        _ -> fail "unknown unary operator (error in parser)"
