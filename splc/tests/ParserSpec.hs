@@ -49,8 +49,34 @@ spec = do
             parseUnaryOperator "-" `shouldParse` SplOperatorNegate
         it "doesn't parse anythign else" $ property $
             \x -> not (x `elem` ["-", "!"]) ==> parseBasicType `shouldFailOn` x
+    describe "sc" $ do
+        it "eats whitespace" $
+            parseSc "  " `succeedsLeaving` ""
+        it "eats newlines" $
+            parseSc "\n" `succeedsLeaving` ""
+        it "eats carriage returns" $
+            parseSc "\r" `succeedsLeaving` ""
+        it "eats crlf" $
+            parseSc "\r" `succeedsLeaving` ""
+        it "eats crlf" $
+            parseSc "\r\n" `succeedsLeaving` ""
+        it "eats line comments" $
+            parseSc "// blablabla" `succeedsLeaving` ""
+        it "eats line comments and leaves stuff after newline" $
+            parseSc "// blablabla\ntest" `succeedsLeaving` "test"
+        it "eats block comments" $
+            parseSc "/* test */" `succeedsLeaving` ""
+        it "eats block comments and preserves other stuff" $
+            parseSc "/* test */follows" `succeedsLeaving` "follows"
+    describe "spl" $ do
+        it "Does not parse empty files" $
+            parseSpl `shouldFailOn` ""
+        it "Parses a single untyped variable declaration" $
+            parseSpl "var x = 3;" `shouldParse` (Spl [SplDeclVar ((SplVarDecl SplTypeUnknown) "x" (SplIntLiteralExpr 3))])
     where
+        parseSc x = runParser' sc (initialState x)
         parseIdentifier = parse identifier ""
         parseInt = parse int ""
         parseBasicType = parse basicType ""
         parseUnaryOperator = parse unaryOperator ""
+        parseSpl = parse spl ""

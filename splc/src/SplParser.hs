@@ -7,24 +7,31 @@ import qualified Text.Megaparsec.Lexer as L
 
 -- SPL = Decl+
 data Spl = Spl [SplDecl]
+    deriving (Show, Eq)
 
 -- Decl = VarDecl | FunDecl
 data SplDecl = SplDeclVar (SplVarDecl) -- nested because we need vardecl seperately
                          -- id ( fargs ) [ :: type ] { VarDecl* Stmt+ }
              | SplFunDecl String [String] [SplRetType] SplRetType [SplVarDecl] [SplStmt]
+    deriving (Show, Eq)
 
                 -- (var | Type) id = expr ;
 data SplVarDecl = SplVarDecl SplType String SplExpr
+    deriving (Show, Eq)
 
 data SplRetType = SplRetType SplType
                 | SplRetVoid
+    deriving (Show, Eq)
 
 data SplType = SplType SplBasicType
+             | SplTypeUnknown
              | SplTypeTuple SplType SplType
              | SplTypeList (SplType)
              | SplTypePlaceholder String
+    deriving (Show, Eq)
 
-data SplBasicType = SplBool | SplInt | SplChar deriving (Show, Eq)
+data SplBasicType = SplBool | SplInt | SplChar
+    deriving (Show, Eq)
 
 data SplStmt = SplIfStmt SplExpr [SplStmt] [SplStmt]
              | SplWhileStmt SplExpr [SplStmt]
@@ -34,6 +41,7 @@ data SplStmt = SplIfStmt SplExpr [SplStmt] [SplStmt]
              | SplFuncCallStmt String [SplExpr]
                -- return Expr
              | SplReturnStmt SplExpr
+    deriving (Show, Eq)
 
 -- Field = [ Field ['.'] (hd | tl | fst | snd) ]
 data SplField = SplFieldHd SplField
@@ -41,6 +49,7 @@ data SplField = SplFieldHd SplField
               | SplFieldFst SplField
               | SplFieldSnd SplField
               | SplFieldNone
+    deriving (Show, Eq)
 
                -- id [.field]
 data SplExpr = SplIdentifierStmt String SplField
@@ -53,6 +62,7 @@ data SplExpr = SplIdentifierStmt String SplField
              | SplFuncCallExpr String [SplExpr]
              | SplEmptyListExpr
              | SplTupleExpr SplExpr SplExpr
+    deriving (Show, Eq)
 
 data SplBinaryOperator = SplOperatorAdd
                        | SplOperatorSubtract
@@ -68,10 +78,36 @@ data SplBinaryOperator = SplOperatorAdd
                        | SplOperatorAnd
                        | SplOperatorOr
                        | SplOperatorCons
-                    deriving (Eq, Show)
-data SplUnaryOperator = SplOperatorInvert | SplOperatorNegate deriving (Show, Eq)
+    deriving (Eq, Show)
+
+data SplUnaryOperator = SplOperatorInvert
+                      | SplOperatorNegate
+    deriving (Show, Eq)
 
 
+spl :: Parser Spl
+spl = Spl <$> parseDecls <* eof
+
+parseDecls :: Parser [SplDecl]
+parseDecls = some $
+    ((SplDeclVar <$> varDecl) <?> "Variable definition")
+    <|> (funDecl <?> "Function definition")
+
+varDecl :: Parser SplVarDecl
+varDecl = do
+    t <- ((readWord "var" *> return SplTypeUnknown) <|> (SplType <$> basicType)) <?> "var or a type"
+    i <- identifier
+    _ <- symbol "="
+    e <- expr
+    _ <- symbol ";"
+    return $ SplVarDecl t i e
+
+funDecl :: Parser SplDecl
+funDecl = fail "Not implemented"
+
+-- Read an expression
+expr :: Parser SplExpr
+expr = (SplIntLiteralExpr <$> int)
 
 -- eats spaces and comments
 sc :: Parser ()
