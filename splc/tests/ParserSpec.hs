@@ -57,6 +57,13 @@ spec = do
             parseBasicType "Bool" `shouldParse` SplBool
         it "doesn't parse anything else" $ property $
             \x -> not (x `elem` ["Int", "Bool", "Char"]) ==> parseBasicType `shouldFailOn` x
+    describe "parseType" $ do
+        it "parses basic types" $ property $
+            forAll (elements basicTypes) $
+               \(x, y) -> parseType' x `shouldParse` (SplType y)
+        it "parses tuples of basic types" $ property $
+            forAll (elements [(a, b) | a <- basicTypes, b <- basicTypes]) $
+               \((x, xt), (y, yt)) -> parseType' ("(" ++ x ++ ", " ++ y ++ ")") `shouldParse` (SplTypeTuple (SplType xt) (SplType yt))
     describe "sc" $ do
         it "eats whitespace" $
             parseSc "  " `succeedsLeaving` ""
@@ -115,7 +122,9 @@ spec = do
         it "parses Boolean literals" $ property $
             \x -> parseExpr (show x) `shouldParse` (SplBooleanLiteralExpr x)
         it "parses Character literals" $ property $
-            \x -> not (x == '\\') ==> parseExpr ('\'':x:"'") `shouldParse` (SplCharLiteralExpr x)
+            \x -> parseExpr (show x) `shouldParse` (SplCharLiteralExpr x)
+        it "parses Character literals like newline" $
+            parseExpr "'\\n'" `shouldParse` (SplCharLiteralExpr '\n')
     describe "spl" $ do
         it "Does not parse empty files" $
             parseSpl `shouldFailOn` ""
@@ -132,6 +141,7 @@ spec = do
         parseBool = parse bool ""
         parseChar = parse character ""
         parseBasicType = parse basicType ""
+        parseType' = parse parseType ""
         parseSpl = parse spl ""
         parseExpr = parse expr ""
         theUnaryOperators = [
@@ -153,4 +163,9 @@ spec = do
                 ("&&", SplOperatorAnd),
                 ("||", SplOperatorOr),
                 (":", SplOperatorCons)
+            ]
+        basicTypes = [
+                ("Bool", SplBool),
+                ("Int", SplInt),
+                ("Char", SplChar)
             ]

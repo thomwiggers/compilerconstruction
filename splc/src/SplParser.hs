@@ -110,7 +110,11 @@ funDecl = do
     name <- identifier
     args <- between (symbol "(") (symbol ")") $ identifier `sepBy` symbol ","
     (argTypes, retType) <- option ([], SplRetType SplTypeUnknown) $ string "::" *> sc *> parseFunTypes
-    when (length argTypes /= length args) $ fail "Number of arguments and types does not match"
+
+    -- check if num args matches num types if given
+    when (null argTypes && length argTypes /= length args) $
+        fail "Number of arguments and types does not match"
+
     let varDecls = []
     let stmts = [SplReturnStmt (SplIntLiteralExpr 1)]
     -- todo parse vardecl* statements+
@@ -121,11 +125,22 @@ funDecl = do
             args <- option [] $ (parseType `endBy` (string "->" *> sc))
             retType <- (SplRetType <$> parseType) <|> pvoid
             return (args, retType)
-        pvoid = readWord "Void" *> return SplRetVoid
+            where
+                pvoid = readWord "Void" *> return SplRetVoid
 
 -- Type parser
 parseType :: Parser SplType
+-- FIXME: parse tuples, lists
 parseType = SplType <$> basicType
+        <|> (do
+                _ <- symbol "("
+                left <- parseType
+                _ <- symbol ","
+                right <- parseType
+                _ <- symbol ")"
+                return $ SplTypeTuple left right
+            ) <?> "tuple"
+        <|> (SplTypePlaceholder <$> identifier)
 
 -- Read an expression
 expr :: Parser SplExpr
@@ -203,14 +218,14 @@ readWord w = do
 
 -- Reserved words
 reserved :: [String]
-reserved = ["if", "else", "while", "return", "True", "False"]
+reserved = ["if", "else", "while", "return", "True", "False", "var"]
 
 -- Parse an identifier
 identifier :: Parser String
 identifier = (lexeme . try) (parser >>= check)
     where
         -- (:) adds the parsed first letter to the list parsed by the many
-        parser = (:) <$> letterChar <*> many (char '_' <|> alphaNumChar)
+        parser = (:) <$> letterChar <*> many (char '_' <|> alphaNumChar) <?> "identifier"
         check :: String -> Parser String
         check x = if x `elem` reserved
                     then fail $ show x ++ " is a reserved keyword"
@@ -224,17 +239,7 @@ bool = do
 
 -- Parse character literals
 character :: Parser Char
-character = label "Character literal" $ between (char '\'') (char '\'') theChar
-    where
-    theChar = choice $ escapes ++ [anyChar]
-    escapes :: [Parser Char]
-    escapes = map themap [
-        ("\\n", '\n'), ("\\t", '\t'), ("\\r", '\r'), ("\\'", '\''),
-        ("\\\\", '\\')]
-    themap :: (String, Char) -> Parser Char
-    themap (s, c) = do
-        _ <- string s
-        return $ c
+character = label "Character literal" $ lexeme (char '\'' *> L.charLiteral <* char '\'')
 
 -- read a basic type
 basicType :: Parser SplBasicType
