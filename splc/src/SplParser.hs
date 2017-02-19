@@ -131,7 +131,7 @@ funDecl = do
 -- Type parser
 parseType :: Parser SplType
 -- FIXME: parse tuples, lists
-parseType = SplType <$> basicType
+parseType = (SplType <$> basicType)
         <|> (do
                 _ <- symbol "("
                 left <- parseType
@@ -139,7 +139,7 @@ parseType = SplType <$> basicType
                 right <- parseType
                 _ <- symbol ")"
                 return $ SplTypeTuple left right
-            ) <?> "tuple"
+             <?> "tuple")
         <|> (SplTypePlaceholder <$> identifier)
 
 -- Read an expression
