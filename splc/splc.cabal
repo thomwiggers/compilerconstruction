@@ -56,6 +56,7 @@ test-suite tests
                       hspec >= 2.4 && <2.5,
                       megaparsec == 5.2.*,
                       hspec-megaparsec == 0.3.*,
+                      pretty == 1.1.*,
                       splc
 
 library
@@ -63,9 +64,11 @@ library
   ghc-options:        -Wall
   hs-source-dirs:     src
   build-depends:      base == 4.9.*,
-                      megaparsec == 5.2.*
+                      megaparsec == 5.2.*,
+                      pretty == 1.1.*
   exposed-modules:    SplParser,
-                      SplAST
+                      SplAST,
+                      SplPrettyPrinter
 
 executable splc
   -- .hs or .lhs file containing the Main module.
@@ -79,7 +82,9 @@ executable splc
   
   -- Other library packages from which modules are imported.
   build-depends:       base >=4.9 && <4.10,
-                       megaparsec == 5.2.*
+                       megaparsec == 5.2.*,
+                       optparse-applicative==0.13.*,
+                       pretty==1.1.*
   
   -- Directories containing source files.
   hs-source-dirs:      src

@@ -47,7 +47,8 @@ funDecl = do
     where
         parseFunTypes :: Parser ([SplType], SplRetType)
         parseFunTypes = label "function type definition" $ do
-            args <- option [] $ many (try (parseType <* symbol "->"))
+            args <- option [] $ many parseType
+            _ <- symbol "->"
             retType <- (SplRetType <$> parseType) <|> pvoid
             return (args, retType)
             where
@@ -55,7 +56,6 @@ funDecl = do
 
 -- Type parser
 parseType :: Parser SplType
--- FIXME: parse tuples, lists
 parseType = (SplType <$> basicType)
         <|> (do
                 _ <- symbol "("
@@ -65,6 +65,8 @@ parseType = (SplType <$> basicType)
                 _ <- symbol ")"
                 return $ SplTypeTuple left right
              <?> "tuple")
+        <|> ((SplTypeList <$> between (symbol "[") (symbol "]") parseType) 
+                <?> "list")
         <|> (SplTypePlaceholder <$> identifier)
 
 -- Read an expression
@@ -117,7 +119,7 @@ operators = [
 
 stmt :: Parser SplStmt
 stmt = (readWord "return" *> (SplReturnStmt <$> expr) <* symbol ";")
-    <|> try (SplAssignmentStmt <$> identifier <*> field <* (void $ symbol "=") <*> expr)
+    <|> try (SplAssignmentStmt <$> identifier <*> field <* (symbol "=") <*> expr)
 
 field :: Parser SplField
 field = return SplFieldNone

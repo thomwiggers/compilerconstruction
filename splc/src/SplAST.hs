@@ -53,7 +53,6 @@ data SplExpr = SplIdentifierExpr String SplField
              | SplIntLiteralExpr Integer
              | SplCharLiteralExpr Char
              | SplBooleanLiteralExpr Bool
-             | SplNestedExpr SplExpr
              | SplFuncCallExpr String [SplExpr]
              | SplEmptyListExpr
              | SplTupleExpr SplExpr SplExpr

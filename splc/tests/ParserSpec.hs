@@ -65,6 +65,9 @@ spec = do
         it "parses tuples of basic types" $ property $
             forAll (elements [(a, b) | a <- basicTypes, b <- basicTypes]) $
                \((x, xt), (y, yt)) -> parseType' ("(" ++ x ++ ", " ++ y ++ ")") `shouldParse` (SplTypeTuple (SplType xt) (SplType yt))
+        it "parses lists of basic types" $ property $
+            forAll (elements basicTypes) $
+               \(x, y) -> parseType' ("[" ++ x ++ "]") `shouldParse` (SplTypeList (SplType y))
     describe "sc" $ do
         it "eats whitespace" $
             parseSc "  " `succeedsLeaving` ""
@@ -154,6 +157,12 @@ spec = do
                 (Spl [SplDeclFun "fun" ["a"] [SplTypePlaceholder "a"]
                                 (SplRetType (SplType SplInt))
                                 [] [SplReturnStmt literalOne]])
+        it "Does parse a function with two types and the same number of arguments" $
+            parseSpl "fun (a, b) :: a b -> Int { return 1; }" `shouldParse`
+                (Spl [SplDeclFun "fun" ["a", "b"] [SplTypePlaceholder "a", SplTypePlaceholder "b"]
+                                (SplRetType (SplType SplInt))
+                                [] [SplReturnStmt literalOne]])
+
     describe "stmt" $ do
         it "Parses return statements" $
             parseStmt "return 1;" `shouldParse`
@@ -164,7 +173,7 @@ spec = do
         it "Parses field assignment statements" $
             parseStmt "a.hd = 1;" `shouldParse`
                 (SplAssignmentStmt "a" (SplFieldHd (SplFieldNone)) literalOne)
-        it "Parses nested assignment statements" $
+        it "Parses nested fiels assignment statements" $
             parseStmt "a.fst.hd = 1;" `shouldParse`
                 (SplAssignmentStmt "a" (SplFieldFst $ SplFieldHd $ SplFieldNone) literalOne)
         it "Parses empty if statements" $
