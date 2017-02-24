@@ -6,6 +6,7 @@ import Test.QuickCheck
 import Text.Megaparsec
 
 import SplParser
+import SplAST
 
 spec :: Spec
 spec = do

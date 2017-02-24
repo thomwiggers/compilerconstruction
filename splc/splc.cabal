@@ -64,7 +64,8 @@ library
   hs-source-dirs:     src
   build-depends:      base == 4.9.*,
                       megaparsec == 5.2.*
-  exposed-modules:    SplParser
+  exposed-modules:    SplParser,
+                      SplAST
 
 executable splc
   -- .hs or .lhs file containing the Main module.
