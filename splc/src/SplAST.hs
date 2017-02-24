@@ -47,7 +47,7 @@ data SplField = SplFieldHd SplField
     deriving (Show, Eq)
 
                -- id [.field]
-data SplExpr = SplIdentifierStmt String SplField
+data SplExpr = SplIdentifierExpr String SplField
              | SplBinaryExpr SplBinaryOperator SplExpr SplExpr
              | SplUnaryExpr SplUnaryOperator SplExpr
              | SplIntLiteralExpr Integer

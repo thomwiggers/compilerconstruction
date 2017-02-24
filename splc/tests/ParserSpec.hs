@@ -126,26 +126,73 @@ spec = do
             \x -> parseExpr (show x) `shouldParse` (SplCharLiteralExpr x)
         it "parses Character literals like newline" $
             parseExpr "'\\n'" `shouldParse` (SplCharLiteralExpr '\n')
+        it "parses ids"$
+            parseExpr "id" `shouldParse` (SplIdentifierExpr "id" SplFieldNone)
+        it "parses ids with Fields" $
+            parseExpr "id.hd" `shouldParse` (SplIdentifierExpr "id" (SplFieldHd (SplFieldNone)))
+        it "parses ids with complex Fields" $
+            parseExpr "id.hd.tl" `shouldParse` (SplIdentifierExpr "id" (SplFieldHd $ SplFieldTl $ SplFieldNone))
     describe "spl" $ do
         it "Does not parse empty files" $
             parseSpl `shouldFailOn` ""
         it "Parses a single untyped variable declaration" $
-            parseSpl "var x = 3;" `shouldParse` (Spl [SplDeclVar ((SplVarDecl SplTypeUnknown) "x" (SplIntLiteralExpr 3))])
+            parseSpl "var x = 3;" `shouldParse`
+                (Spl [SplDeclVar ((SplVarDecl SplTypeUnknown) "x" (SplIntLiteralExpr 3))])
         it "Parses a function definition without args or types" $
             parseSpl "fun () { return 1; }" `shouldParse`
                 (Spl [SplDeclFun "fun" [] [] (SplRetType SplTypeUnknown) [] [SplReturnStmt literalOne]])
+        it "Parses a function definition without args or types, with a var decl" $
+            parseSpl "fun () { Int a = 1; return 1; }" `shouldParse`
+                (Spl [SplDeclFun "fun" [] [] (SplRetType SplTypeUnknown)
+                    [SplVarDecl (SplType SplInt) "a" literalOne] [SplReturnStmt literalOne]])
         it "Doesn't parse an invalid function without types" $
             parseSpl `shouldFailOn` "fun () :: { return 1; }"
         it "Doesn't parse a function with types but no arguments" $
             parseSpl `shouldFailOn` "fun () :: a -> Int { return 1; }"
         it "Does parse a function with types and the same number of arguments" $
             parseSpl "fun (a) :: a -> Int { return 1; }" `shouldParse`
-                (Spl [SplDeclFun "fun" ["a"] [SplTypePlaceholder "a"] (SplRetType (SplType SplInt)) [] [SplReturnStmt literalOne]])
+                (Spl [SplDeclFun "fun" ["a"] [SplTypePlaceholder "a"]
+                                (SplRetType (SplType SplInt))
+                                [] [SplReturnStmt literalOne]])
     describe "stmt" $ do
         it "Parses return statements" $
-            parseStmt "return 1;" `shouldParse` (SplReturnStmt literalOne)
+            parseStmt "return 1;" `shouldParse`
+                (SplReturnStmt literalOne)
         it "Parses simple assignment statements" $
-            parseStmt "a = 1;" `shouldParse` (SplAssignmentStmt "a" SplFieldNone literalOne)
+            parseStmt "a = 1;" `shouldParse`
+                (SplAssignmentStmt "a" SplFieldNone literalOne)
+        it "Parses field assignment statements" $
+            parseStmt "a.hd = 1;" `shouldParse`
+                (SplAssignmentStmt "a" (SplFieldHd (SplFieldNone)) literalOne)
+        it "Parses nested assignment statements" $
+            parseStmt "a.fst.hd = 1;" `shouldParse`
+                (SplAssignmentStmt "a" (SplFieldFst $ SplFieldHd $ SplFieldNone) literalOne)
+        it "Parses empty if statements" $
+            parseStmt "if (True) { }" `shouldParse` (SplIfStmt literalTrue [] [])
+        it "Parses empty if statements with else" $
+            parseStmt "if (True) { } else { }" `shouldParse` (SplIfStmt literalTrue [] [])
+        it "Parses non-empty if statements" $
+            parseStmt "if (True) { return 1; }" `shouldParse`
+                (SplIfStmt literalTrue [SplReturnStmt literalOne] [])
+        it "Parses non-empty if statements with non-empty else" $
+            parseStmt "if (True) { return 1; } else { }" `shouldParse`
+                (SplIfStmt literalTrue [SplReturnStmt literalOne] [SplReturnStmt literalOne])
+        it "Should not parse else without if body" $
+            parseStmt `shouldFailOn` "if (True) else { }"
+        it "Should not parse if without {}" $
+            parseStmt `shouldFailOn` "if (True) return 1;"
+        it "Should not parse if without ()" $
+            parseStmt `shouldFailOn` "if True {return 1;}"
+        it "Should parse empty while statements" $
+            parseStmt "while (True) { }" `shouldParse` (SplWhileStmt literalTrue [])
+        it "Should parse non-empty while statements" $
+            parseStmt "while (True) { return 1; }" `shouldParse`
+                (SplWhileStmt literalTrue [SplReturnStmt literalOne])
+        it "Should parse function calls" $
+            parseStmt "fun ();" `shouldParse` (SplFuncCallStmt "fun" [])
+        it "Should parse function calls with args" $
+            parseStmt "fun (a);" `shouldParse`
+                (SplFuncCallStmt "fun" [SplIdentifierExpr "a" SplFieldNone])
     where
         literalOne = SplIntLiteralExpr 1
         literalTrue = SplBooleanLiteralExpr True
