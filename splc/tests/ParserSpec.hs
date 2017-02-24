@@ -132,7 +132,20 @@ spec = do
         it "Parses a single untyped variable declaration" $
             parseSpl "var x = 3;" `shouldParse` (Spl [SplDeclVar ((SplVarDecl SplTypeUnknown) "x" (SplIntLiteralExpr 3))])
         it "Parses a function definition without args or types" $
-            parseSpl "fun () { return 1; }" `shouldParse` (Spl [SplDeclFun "fun" [] [] (SplRetType SplTypeUnknown) [] [SplReturnStmt literalOne]])
+            parseSpl "fun () { return 1; }" `shouldParse`
+                (Spl [SplDeclFun "fun" [] [] (SplRetType SplTypeUnknown) [] [SplReturnStmt literalOne]])
+        it "Doesn't parse an invalid function without types" $
+            parseSpl `shouldFailOn` "fun () :: { return 1; }"
+        it "Doesn't parse a function with types but no arguments" $
+            parseSpl `shouldFailOn` "fun () :: a -> Int { return 1; }"
+        it "Does parse a function with types and the same number of arguments" $
+            parseSpl "fun (a) :: a -> Int { return 1; }" `shouldParse`
+                (Spl [SplDeclFun "fun" ["a"] [SplTypePlaceholder "a"] (SplRetType (SplType SplInt)) [] [SplReturnStmt literalOne]])
+    describe "stmt" $ do
+        it "Parses return statements" $
+            parseStmt "return 1;" `shouldParse` (SplReturnStmt literalOne)
+        it "Parses simple assignment statements" $
+            parseStmt "a = 1;" `shouldParse` (SplAssignmentStmt "a" SplFieldNone literalOne)
     where
         literalOne = SplIntLiteralExpr 1
         literalTrue = SplBooleanLiteralExpr True
@@ -144,6 +157,7 @@ spec = do
         parseBasicType = parse basicType ""
         parseType' = parse parseType ""
         parseSpl = parse spl ""
+        parseStmt = parse stmt ""
         parseExpr = parse expr ""
         theUnaryOperators = [
                 ("~", SplOperatorInvert),

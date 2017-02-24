@@ -14,8 +14,8 @@ spl = Spl <$> parseDecls <* eof
 
 parseDecls :: Parser [SplDecl]
 parseDecls = some $
-    ((SplDeclVar <$> varDecl) <?> "Variable definition")
-    <|> (funDecl <?> "Function definition")
+        (try ((SplDeclVar <$> varDecl) <?> "Variable definition"))
+    <|> (try (funDecl <?> "Function definition"))
 
 -- variable declarations
 varDecl :: Parser SplVarDecl
@@ -32,20 +32,22 @@ funDecl :: Parser SplDecl
 funDecl = do
     name <- identifier
     args <- between (symbol "(") (symbol ")") $ identifier `sepBy` symbol ","
-    (argTypes, retType) <- option ([], SplRetType SplTypeUnknown) $ string "::" *> sc *> parseFunTypes
+    (argTypes, retType) <- (
+        option ([], SplRetType SplTypeUnknown)
+            $ string "::" *> sc *> parseFunTypes)
 
     -- check if num args matches num types if given
-    when (null argTypes && length argTypes /= length args) $
+    when (not (null argTypes) && length argTypes /= length args) $
         fail "Number of arguments and types does not match"
-
-    let varDecls = []
-    let stmts = [SplReturnStmt (SplIntLiteralExpr 1)]
-    -- todo parse vardecl* statements+
+    _ <- symbol "{"
+    varDecls <- many varDecl -- VarDecl*
+    stmts <- some stmt  -- Stmt+
+    _ <- symbol "}"
     return $ SplDeclFun name args argTypes retType varDecls stmts
     where
         parseFunTypes :: Parser ([SplType], SplRetType)
-        parseFunTypes = do
-            args <- option [] $ (parseType `endBy` (string "->" *> sc))
+        parseFunTypes = label "function type definition" $ do
+            args <- option [] $ many (try (parseType <* symbol "->"))
             retType <- (SplRetType <$> parseType) <|> pvoid
             return (args, retType)
             where
@@ -112,6 +114,14 @@ operators = [
     where
         readOperator :: String -> Parser ()
         readOperator s = void (string s) <* sc
+
+stmt :: Parser SplStmt
+stmt = (readWord "return" *> (SplReturnStmt <$> expr) <* symbol ";")
+    <|> try (SplAssignmentStmt <$> identifier <*> field <* (void $ symbol "=") <*> expr)
+
+field :: Parser SplField
+field = return SplFieldNone
+
 
 -- eats spaces and comments
 sc :: Parser ()
