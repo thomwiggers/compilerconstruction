@@ -68,6 +68,9 @@ spec = do
         it "parses lists of basic types" $ property $
             forAll (elements basicTypes) $
                \(x, y) -> parseType' ("[" ++ x ++ "]") `shouldParse` (SplTypeList (SplType y))
+        it "parses lists of lists" $ property $
+            forAll (elements basicTypes) $
+               \(x, y) -> parseType' ("[[" ++ x ++ "]]") `shouldParse` (SplTypeList $ SplTypeList $ SplType y)
     describe "sc" $ do
         it "eats whitespace" $
             parseSc "  " `succeedsLeaving` ""
@@ -210,6 +213,7 @@ spec = do
     where
         literalOne = SplIntLiteralExpr 1
         literalTrue = SplBooleanLiteralExpr True
+        -- special runParser for succeedsLeaving
         parseSc x = runParser' sc (initialState x)
         parseIdentifier = parse identifier ""
         parseInt = parse int ""

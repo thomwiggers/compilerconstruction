@@ -65,7 +65,7 @@ parseType = (SplType <$> basicType)
                 _ <- symbol ")"
                 return $ SplTypeTuple left right
              <?> "tuple")
-        <|> ((SplTypeList <$> between (symbol "[") (symbol "]") parseType) 
+        <|> ((SplTypeList <$> between (symbol "[") (symbol "]") parseType)
                 <?> "list")
         <|> (SplTypePlaceholder <$> identifier)
 
@@ -123,7 +123,7 @@ operators = [
 
 stmt :: Parser SplStmt
 stmt = (readWord "return" *> (SplReturnStmt <$> expr) <* symbol ";")
-    <|> (readWord "if" *> (SplIfStmt <$> expr <*> braces (many stmt) <*> option [] (readWord "else" *> braces (many stmt))))
+    <|> (readWord "if" *> (SplIfStmt <$> parens expr <*> braces (many stmt) <*> option [] (readWord "else" *> braces (many stmt))))
     <|> try (SplAssignmentStmt <$> identifier <*> field <* (symbol "=") <*> expr)
     <|> try (SplFuncCallStmt <$> identifier <*> between (symbol "(") (symbol ")") (expr `sepBy` symbol ","))
 
@@ -154,6 +154,10 @@ int = (L.signed (void $ string "") (lexeme L.integer)) <?> "Integer literal"
 -- Between braces
 braces :: Parser a -> Parser a
 braces = between (symbol "{") (symbol "}")
+
+-- between parentheses
+parens :: Parser a -> Parser a
+parens = between (symbol "(") (symbol ")")
 
 -- Makes sure we read a bare word, useful for keywords etc.
 readWord :: String -> Parser String
