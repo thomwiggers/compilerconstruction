@@ -183,9 +183,14 @@ spec = do
         it "Parses non-empty if statements" $
             parseStmt "if (True) { return 1; }" `shouldParse`
                 (SplIfStmt literalTrue [SplReturnStmt literalOne] [])
-        it "Parses non-empty if statements with non-empty else" $
+        it "Parses non-empty if statements with empty else" $
             parseStmt "if (True) { return 1; } else { }" `shouldParse`
+                (SplIfStmt literalTrue [SplReturnStmt literalOne] [])
+        it "Parses non-empty if statements with non-empty else" $
+            parseStmt "if (True) { return 1; } else { return 1; }" `shouldParse`
                 (SplIfStmt literalTrue [SplReturnStmt literalOne] [SplReturnStmt literalOne])
+        it "Parses non-empty else statements with empty else leaving nothing" $
+            runParser' stmt (initialState "if (True) { return 1; } else { }") `succeedsLeaving` ""
         it "Should not parse else without if body" $
             parseStmt `shouldFailOn` "if (True) else { }"
         it "Should not parse if without {}" $
