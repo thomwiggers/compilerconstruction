@@ -138,6 +138,8 @@ spec = do
             parseExpr "id.hd" `shouldParse` (SplIdentifierExpr "id" (SplFieldHd (SplFieldNone)))
         it "parses ids with complex Fields" $
             parseExpr "id.hd.tl" `shouldParse` (SplIdentifierExpr "id" (SplFieldHd $ SplFieldTl $ SplFieldNone))
+        it "Parses variables in expressions" $
+            parseExpr "a + 1" `shouldParse` (SplBinaryExpr SplOperatorAdd (SplIdentifierExpr "a" SplFieldNone) literalOne)
     describe "spl" $ do
         it "Does not parse empty files" $
             parseSpl `shouldFailOn` ""
@@ -147,10 +149,18 @@ spec = do
         it "Parses a function definition without args or types" $
             parseSpl "fun () { return 1; }" `shouldParse`
                 (Spl [SplDeclFun "fun" [] [] (SplRetType SplTypeUnknown) [] [SplReturnStmt literalOne]])
+        it "Does parse a function with two statements" $
+            parseSpl "fun () { return 1; return 1; }" `shouldParse`
+                (Spl [SplDeclFun "fun" [] [] (SplRetType SplTypeUnknown)
+                                [] [SplReturnStmt literalOne, SplReturnStmt literalOne]])
         it "Parses a function definition without args or types, with a var decl" $
             parseSpl "fun () { Int a = 1; return 1; }" `shouldParse`
                 (Spl [SplDeclFun "fun" [] [] (SplRetType SplTypeUnknown)
                     [SplVarDecl (SplType SplInt) "a" literalOne] [SplReturnStmt literalOne]])
+        it "Parses a function definition which updates a variable" $
+            parseSpl "fun () { Int a = 1; a = a + 1; }" `shouldParse`
+                (Spl [SplDeclFun "fun" [] [] (SplRetType SplTypeUnknown)
+                    [SplVarDecl (SplType SplInt) "a" literalOne] [(SplAssignmentStmt "a" SplFieldNone (SplBinaryExpr SplOperatorAdd (SplIdentifierExpr "a" SplFieldNone) literalOne))]])
         it "Doesn't parse an invalid function without types" $
             parseSpl `shouldFailOn` "fun () :: { return 1; }"
         it "Doesn't parse a function with types but no arguments" $
@@ -179,6 +189,9 @@ spec = do
         it "Parses nested fiels assignment statements" $
             parseStmt "a.fst.hd = 1;" `shouldParse`
                 (SplAssignmentStmt "a" (SplFieldFst $ SplFieldHd $ SplFieldNone) literalOne)
+        it "parses updates of variables" $
+            parseStmt "a = a + 1;" `shouldParse`
+                (SplAssignmentStmt "a" SplFieldNone (SplBinaryExpr SplOperatorAdd (SplIdentifierExpr "a" SplFieldNone) literalOne))
         it "Parses empty if statements" $
             parseStmt "if (True) { }" `shouldParse` (SplIfStmt literalTrue [] [])
         it "Parses empty if statements with else" $

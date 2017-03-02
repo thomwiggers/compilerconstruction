@@ -40,7 +40,7 @@ funDecl = do
     when (not (null argTypes) && length argTypes /= length args) $
         fail "Number of arguments and types does not match"
     _ <- symbol "{"
-    varDecls <- many varDecl -- VarDecl*
+    varDecls <- many (try varDecl) -- VarDecl*
     stmts <- some stmt  -- Stmt+
     _ <- symbol "}"
     return $ SplDeclFun name args argTypes retType varDecls stmts
@@ -123,7 +123,7 @@ stmt = (readWord "return" *> (SplReturnStmt <$> expr) <* symbol ";")
     <|> (readWord "if" *> (SplIfStmt <$> parens expr <*> braces (many stmt)
             <*> option [] (readWord "else" *> braces (many stmt))))
     <|> (readWord "while" *> (SplWhileStmt <$> parens expr <*> braces (many stmt)))
-    <|> try (SplAssignmentStmt <$> identifier <*> field <* (symbol "=") <*> expr)
+    <|> try (SplAssignmentStmt <$> identifier <*> field <* (symbol "=") <*> expr <* symbol ";")
     <|> try (SplFuncCallStmt <$> identifier <*> parens (expr `sepBy` symbol ","))
 
 field :: Parser SplField
