@@ -78,10 +78,7 @@ exprTerms = (SplIntLiteralExpr <$> int)
         <|> (SplBooleanLiteralExpr <$> bool)
         <|> (SplCharLiteralExpr <$> character)
         <|> (parens expr <?> "Subexpression")
-        <|> (SplIdentifierExpr <$> identifier <*> parseField)
-
-parseField :: Parser SplField
-parseField = return SplFieldNone
+        <|> (SplIdentifierExpr <$> identifier <*> field)
 
 -- binary operators
 operators :: [[Operator Parser SplExpr]]
@@ -130,7 +127,16 @@ stmt = (readWord "return" *> (SplReturnStmt <$> expr) <* symbol ";")
     <|> try (SplFuncCallStmt <$> identifier <*> parens (expr `sepBy` symbol ","))
 
 field :: Parser SplField
-field = return SplFieldNone
+field = char '.' *> (
+            readKw "hd" *> (SplFieldHd <$> field)
+        <|> readKw "tl" *> (SplFieldTl <$> field)
+        <|> readKw "fst" *> (SplFieldFst <$> field)
+        <|> readKw "snd" *> (SplFieldSnd <$> field)
+    ) <* sc
+    <|> return SplFieldNone
+    where
+        readKw :: String -> Parser ()
+        readKw w = string w *> notFollowedBy alphaNumChar
 
 -- eats spaces and comments
 sc :: Parser ()
