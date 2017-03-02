@@ -1,4 +1,4 @@
-module SplPrettyPrinter (pprint) where
+module SplPrettyPrinter where
 
 import Text.PrettyPrint
 
@@ -14,7 +14,7 @@ printSpl (Spl (SplDeclFun name args argTypes retType varDecls stmts : xs))
      = text name 
     <> parens (printArgs args) 
     <+> (printTypeDecl argTypes retType)
-    <+> braces (nest 4 (printVarDecls varDecls $+$ printStmts stmts))
+    <+> lbrace $+$ (nest 4 $ printVarDecls varDecls $+$ printStmts stmts) $+$ rbrace
     $+$ printSpl (Spl xs)
     where
         printArgs args_ = commaSep (map text args_)
@@ -46,12 +46,12 @@ printStmt (SplFuncCallStmt name args) = text name <> parens (commaSep (map print
 printStmt (SplAssignmentStmt name field expr) =
     text name <> printField field <+> equals <+> printExpr expr <> semi
 printStmt (SplWhileStmt cond stmts) = 
-    text "while" <+> parens (printExpr cond) <+> braces (nest 4 (printStmts stmts))
+    text "while" <+> parens (printExpr cond) <+> lbrace $+$ (nest 4 $ printStmts stmts) $+$ rbrace
 printStmt (SplIfStmt cond stmts []) =
-    text "if" <+> parens (printExpr cond) <+> braces (nest 4 (printStmts stmts))
+    text "if" <+> parens (printExpr cond) <+> lbrace $+$ (nest 4 $ printStmts stmts) $+$ rbrace
 printStmt (SplIfStmt cond thenStmts elseStmts) =
-    text "if" <+> parens (printExpr cond) <+> braces (nest 4 (printStmts thenStmts))
-        <+> text "else" <+> braces (nest 4 (printStmts elseStmts))
+    text "if" <+> parens (printExpr cond) <+> lbrace $+$ (nest 4 $ printStmts thenStmts) $+$ rbrace
+        <+> text "else" <+> lbrace $+$ (nest 4 $ printStmts elseStmts) $+$ rbrace
 
 printType :: SplType -> Doc
 printType (SplType basicType) = printBasicType basicType
