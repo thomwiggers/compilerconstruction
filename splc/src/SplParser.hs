@@ -31,7 +31,7 @@ varDecl = do
 funDecl :: Parser SplDecl
 funDecl = do
     name <- identifier
-    args <- between (symbol "(") (symbol ")") $ identifier `sepBy` symbol ","
+    args <- parens $ identifier `sepBy` symbol ","
     (argTypes, retType) <- (
         option ([], SplRetType SplTypeUnknown)
             $ string "::" *> sc *> parseFunTypes)
@@ -77,7 +77,7 @@ exprTerms :: Parser SplExpr
 exprTerms = (SplIntLiteralExpr <$> int)
         <|> (SplBooleanLiteralExpr <$> bool)
         <|> (SplCharLiteralExpr <$> character)
-        <|> (between (symbol "(") (symbol ")") expr <?> "Subexpression")
+        <|> (parens expr <?> "Subexpression")
         <|> (SplIdentifierExpr <$> identifier <*> parseField)
 
 parseField :: Parser SplField
@@ -123,13 +123,14 @@ operators = [
 
 stmt :: Parser SplStmt
 stmt = (readWord "return" *> (SplReturnStmt <$> expr) <* symbol ";")
-    <|> (readWord "if" *> (SplIfStmt <$> parens expr <*> braces (many stmt) <*> option [] (readWord "else" *> braces (many stmt))))
+    <|> (readWord "if" *> (SplIfStmt <$> parens expr <*> braces (many stmt)
+            <*> option [] (readWord "else" *> braces (many stmt))))
+    <|> (readWord "while" *> (SplWhileStmt <$> parens expr <*> braces (many stmt)))
     <|> try (SplAssignmentStmt <$> identifier <*> field <* (symbol "=") <*> expr)
-    <|> try (SplFuncCallStmt <$> identifier <*> between (symbol "(") (symbol ")") (expr `sepBy` symbol ","))
+    <|> try (SplFuncCallStmt <$> identifier <*> parens (expr `sepBy` symbol ","))
 
 field :: Parser SplField
 field = return SplFieldNone
-
 
 -- eats spaces and comments
 sc :: Parser ()
