@@ -41,6 +41,7 @@ printStmts [] = empty
 printStmts (x:xs) = printStmt x $+$ printStmts xs
 
 printStmt :: SplStmt -> Doc
+printStmt (SplReturnVoidStmt) = text "return" <> semi
 printStmt (SplReturnStmt expr) = text "return" <+> printExpr expr <> semi
 printStmt (SplFuncCallStmt name args) = text name <> parens (commaSep (map printExpr args)) <> semi
 printStmt (SplAssignmentStmt name field expr) =

@@ -36,6 +36,7 @@ data SplStmt = SplIfStmt SplExpr [SplStmt] [SplStmt]
              | SplFuncCallStmt String [SplExpr]
                -- return Expr
              | SplReturnStmt SplExpr
+             | SplReturnVoidStmt
     deriving (Show, Eq)
 
 -- Field = [ Field ['.'] (hd | tl | fst | snd) ]

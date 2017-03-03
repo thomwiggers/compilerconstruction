@@ -42,17 +42,16 @@ funDecl = do
     _ <- symbol "{"
     varDecls <- many (try varDecl) -- VarDecl*
     stmts <- some stmt  -- Stmt+
-    _ <- symbol "}"
+    _ <- symbol "}" <?> "end of function"
     return $ SplDeclFun name args argTypes retType varDecls stmts
     where
         parseFunTypes :: Parser ([SplType], SplRetType)
         parseFunTypes = label "function type definition" $ do
-            args <- option [] $ many parseType
-            _ <- symbol "->"
-            retType <- (SplRetType <$> parseType) <|> pvoid
+            args <- (option [] $ try $ (many parseType) <* symbol "->")
+            retType <- pvoid <|> (SplRetType <$> parseType)
             return (args, retType)
             where
-                pvoid = readWord "Void" *> return SplRetVoid
+                pvoid = (readWord "Void" *> return SplRetVoid) <?> "Void"
 
 -- Type parser
 parseType :: Parser SplType
@@ -119,12 +118,15 @@ operators = [
         readOperator s = void (string s) <* sc
 
 stmt :: Parser SplStmt
-stmt = (readWord "return" *> (SplReturnStmt <$> expr) <* symbol ";")
+stmt = (readWord "return" *> (
+                (SplReturnStmt <$> expr <* symbol ";")
+            <|> (SplReturnVoidStmt <$ symbol ";")
+        ))
     <|> (readWord "if" *> (SplIfStmt <$> parens expr <*> braces (many stmt)
             <*> option [] (readWord "else" *> braces (many stmt))))
     <|> (readWord "while" *> (SplWhileStmt <$> parens expr <*> braces (many stmt)))
     <|> try (SplAssignmentStmt <$> identifier <*> field <* (symbol "=") <*> expr <* symbol ";")
-    <|> try (SplFuncCallStmt <$> identifier <*> parens (expr `sepBy` symbol ","))
+    <|> try (SplFuncCallStmt <$> identifier <*> parens (expr `sepBy` symbol ",") <* symbol ";")
 
 field :: Parser SplField
 field = char '.' *> (
@@ -174,7 +176,7 @@ readWord w = do
 
 -- Reserved words
 reserved :: [String]
-reserved = ["if", "else", "while", "return", "True", "False", "var"]
+reserved = ["if", "else", "while", "return", "True", "False", "var", "Void", "Int", "Bool"]
 
 -- Parse an identifier
 identifier :: Parser String

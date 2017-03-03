@@ -180,6 +180,8 @@ spec = do
         it "Parses return statements" $
             parseStmt "return 1;" `shouldParse`
                 (SplReturnStmt literalOne)
+        it "Parses return void statements" $
+            parseStmt "return;" `shouldParse` SplReturnVoidStmt
         it "Parses simple assignment statements" $
             parseStmt "a = 1;" `shouldParse`
                 (SplAssignmentStmt "a" SplFieldNone literalOne)
