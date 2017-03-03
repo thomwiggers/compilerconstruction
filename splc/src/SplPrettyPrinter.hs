@@ -20,6 +20,8 @@ printSpl (Spl (SplDeclFun name args argTypes retType varDecls stmts : xs))
         printArgs args_ = commaSep (map text args_)
 
         printTypeDecl [] (SplRetType SplTypeUnknown) = empty
+        printTypeDecl [] (SplRetVoid) = text ":: Void"
+        printTypeDecl [] (SplRetType t) = text "::" <+> printType t
         printTypeDecl a b = text "::" <+> printTypeDecl' a b
 
         printTypeDecl' [] SplRetVoid = text "-> Void"
