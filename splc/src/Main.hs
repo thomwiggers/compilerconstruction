@@ -8,6 +8,7 @@ import Data.Semigroup ((<>))
 import Text.Megaparsec (runParser, parseErrorPretty)
 import SplParser (spl)
 import SplPrettyPrinter
+import System.Exit
 
 data InputSrc = StdInput | Filename String
     deriving (Eq, Show)
@@ -31,7 +32,7 @@ parseFile = Filename <$> argument str (
 parseStdIn :: Parser InputSrc
 parseStdIn = flag' StdInput (short 'i' <> long "stdin")
 
-doPrettyPrint :: InputSrc -> IO ()
+doPrettyPrint :: InputSrc -> IO ExitCode
 doPrettyPrint src = do
     fileContent <- case src of
             StdInput -> getContents
@@ -44,17 +45,18 @@ doPrettyPrint src = do
     let parsed = runParser spl filename fileContent
 
     case parsed of
-            Left err -> putStr (parseErrorPretty err)
-            Right ast -> putStrLn (pprint ast)
+            Left err -> do
+                    putStr (parseErrorPretty err)
+                    exitFailure
+            Right ast -> do
+                    putStrLn (pprint ast)
+                    exitSuccess
 
-
-
-main :: IO ()
+main :: IO ExitCode
 main = do
     opts <- execParser theOpts
     case opts of
         (PrettyPrint src) -> doPrettyPrint src
-
     where
         theOpts = info (commandParser <**> helper) $
                fullDesc
