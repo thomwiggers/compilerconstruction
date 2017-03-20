@@ -2,6 +2,7 @@ module TypeCheckerSpec (spec) where
 
 import Test.Hspec
 import Control.Monad.Trans.State
+import qualified Data.Map as Map
 
 import SplAST
 import SplTypeChecker
@@ -15,5 +16,21 @@ spec = do
             (SplTypeTuple (SplType SplInt) (SplType SplInt))
                 `checksAs` 
                  (SplTypeTuple (SplType SplInt) (SplType SplInt))
+    describe "Variable Declarations" $ do
+        it "checks as Int" $
+            (SplVarDecl (SplType SplInt) "name" (SplIntLiteralExpr 42)) `checksAs` (SplType SplInt)
+        it "updates the environment" $
+            (SplVarDecl (SplType SplInt) "name" (SplIntLiteralExpr 42)) `updatesStateWith` ("name", SplType SplInt)
     where
         checksAs a b = evalStateT (typeCheck a) emptyEnvironment `shouldBe` (pure b)
+
+        {- Check if the state contains what's expected
+         -
+         - Function eliminates Either from the state, then the lookup may have a Just.
+         -}
+        updatesStateWith :: (SplTypeChecker a) => a -> (String, SplType) -> Expectation
+        updatesStateWith a (n, b) = do
+            let eitherenv = execStateT (typeCheck a) emptyEnvironment
+            case eitherenv of
+                Right env -> shouldBe (Map.lookup n env) (Just b)
+                Left e -> expectationFailure e

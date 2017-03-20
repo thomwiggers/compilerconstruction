@@ -26,8 +26,12 @@ instance SplTypeChecker SplVarDecl where
         t <- typeCheck varType
         e <- typeCheck expr
         if (t == e) 
-            then pure t
+            then (do
+                modify (Map.insert name t)
+                return t
+            )
             else fail "Type mismatch when parsing varDecl"
 
 instance SplTypeChecker SplExpr where
+    typeCheck (SplIntLiteralExpr _) = return $ SplType SplInt
     typeCheck _ = fail "Not implemented"

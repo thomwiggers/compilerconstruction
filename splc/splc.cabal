@@ -55,6 +55,7 @@ test-suite tests
                       base >= 4.9 && <4.10,
                       hspec >= 2.4 && <2.5,
                       megaparsec == 5.2.*,
+                      containers,
                       transformers,
                       hspec-megaparsec == 0.3.*,
                       pretty == 1.1.*,
