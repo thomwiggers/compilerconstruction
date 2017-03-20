@@ -55,6 +55,7 @@ test-suite tests
                       base >= 4.9 && <4.10,
                       hspec >= 2.4 && <2.5,
                       megaparsec == 5.2.*,
+                      transformers,
                       hspec-megaparsec == 0.3.*,
                       pretty == 1.1.*,
                       splc
@@ -75,9 +76,12 @@ library
   hs-source-dirs:     src
   build-depends:      base == 4.9.*,
                       megaparsec == 5.2.*,
+                      transformers,
+                      containers == 0.5.*,
                       pretty == 1.1.*
   exposed-modules:    SplParser,
                       SplAST,
+                      SplTypeChecker,
                       SplPrettyPrinter
 
 executable splc

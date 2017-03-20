@@ -19,9 +19,9 @@ data SplRetType = SplRetType SplType
     deriving (Show, Eq)
 
 data SplType = SplType SplBasicType
-             | SplTypeUnknown
              | SplTypeTuple SplType SplType
              | SplTypeList (SplType)
+             | SplTypeUnknown
              | SplTypePlaceholder String
     deriving (Show, Eq)
 
