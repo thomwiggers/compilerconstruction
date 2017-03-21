@@ -21,8 +21,11 @@ spec = do
             (SplVarDecl (SplType SplInt) "name" (SplIntLiteralExpr 42)) `checksAs` (SplType SplInt)
         it "updates the environment" $
             (SplVarDecl (SplType SplInt) "name" (SplIntLiteralExpr 42)) `updatesStateWith` ("name", SplType SplInt)
+        it "Disallows faulty declarations" $
+            (SplVarDecl (SplType SplInt) "name" (SplCharLiteralExpr '🎉')) `failsWith` "Type mismatch when parsing varDecl"
     where
-        checksAs a b = evalStateT (typeCheck a) emptyEnvironment `shouldBe` (pure b)
+        checksAs a b = evalStateT (typeCheck a) emptyEnvironment `shouldBe` (Right b)
+        failsWith a e = runStateT (typeCheck a) emptyEnvironment `shouldBe` (Left e)
 
         {- Check if the state contains what's expected
          -
