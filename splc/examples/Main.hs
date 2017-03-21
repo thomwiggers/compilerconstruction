@@ -5,4 +5,5 @@ import System.Exit
 
 main :: IO ExitCode
 main = do
-    rawSystem "./examples/test.sh" []
+    code <- system "./examples/test.sh"
+    exitWith code
