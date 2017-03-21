@@ -10,7 +10,7 @@ import SplAST
 
 
 spl :: Parser Spl
-spl = Spl <$> parseDecls <* eof
+spl = Spl <$> (sc *> parseDecls <* eof)
 
 parseDecls :: Parser [SplDecl]
 parseDecls = some $
