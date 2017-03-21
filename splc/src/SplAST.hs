@@ -20,7 +20,7 @@ data SplRetType = SplRetType SplType
 
 data SplType = SplType SplBasicType
              | SplTypeTuple SplType SplType
-             | SplTypeList (SplType)
+             | SplTypeList SplType
              | SplTypeUnknown
              | SplTypePlaceholder String
     deriving (Show, Eq)

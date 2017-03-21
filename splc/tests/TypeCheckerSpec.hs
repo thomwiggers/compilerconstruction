@@ -11,16 +11,16 @@ spec :: Spec
 spec = do
     describe "Type definitions" $ do
         it "checks Int" $
-            (SplType SplInt) `checksAs` (SplType SplInt)
+            (SplType SplInt) `checksAs` (SplSimple $ SplTypeConst SplInt)
         it "checks tuples of ints" $
             (SplTypeTuple (SplType SplInt) (SplType SplInt))
                 `checksAs` 
-                 (SplTypeTuple (SplType SplInt) (SplType SplInt))
+                 (SplSimple (SplTypeTupleR (SplTypeConst SplInt) (SplTypeConst SplInt)))
     describe "Variable Declarations" $ do
         it "checks as Int" $
-            (SplVarDecl (SplType SplInt) "name" (SplIntLiteralExpr 42)) `checksAs` (SplType SplInt)
+            (SplVarDecl (SplType SplInt) "name" (SplIntLiteralExpr 42)) `checksAs` (SplSimple $ SplTypeConst SplInt)
         it "updates the environment" $
-            (SplVarDecl (SplType SplInt) "name" (SplIntLiteralExpr 42)) `updatesStateWith` ("name", SplType SplInt)
+            (SplVarDecl (SplType SplInt) "name" (SplIntLiteralExpr 42)) `updatesStateWith` ("name", SplSimple $ SplTypeConst SplInt)
         it "Disallows faulty declarations" $
             (SplVarDecl (SplType SplInt) "name" (SplCharLiteralExpr '🎉')) `failsWith` "Type mismatch when parsing varDecl"
     where
@@ -31,7 +31,7 @@ spec = do
          -
          - Function eliminates Either from the state, then the lookup may have a Just.
          -}
-        updatesStateWith :: (SplTypeChecker a) => a -> (String, SplType) -> Expectation
+        updatesStateWith :: (SplTypeChecker a) => a -> (String, SplTypeR) -> Expectation
         updatesStateWith a (n, b) = do
             let eitherenv = execStateT (typeCheck a) emptyEnvironment
             case eitherenv of
