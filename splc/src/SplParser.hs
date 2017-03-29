@@ -83,8 +83,10 @@ exprTerms = (SplIntLiteralExpr <$> int)
                 c <- symbol ")" <|> symbol ","
                 if (c == ")")
                     then (return left)
-                    else (SplTupleExpr left <$> expr)
+                    else (SplTupleExpr left <$> expr <* symbol ")")
             )
+        -- parse identifiers or function calls
+        -- Again, try is slow
         <|> (do
                 name <- identifier
                 c <- option "NONE" (lookAhead (symbol "." <|> symbol "("))
@@ -92,7 +94,7 @@ exprTerms = (SplIntLiteralExpr <$> int)
                     "NONE" -> return $ SplIdentifierExpr name SplFieldNone
                     "(" -> (SplFuncCallExpr name) <$> parens (expr `sepBy` symbol ",")
                     "." -> (SplIdentifierExpr name) <$> field
-                    _ -> fail "This should never happen"
+                    _ -> fail "This should never happen (in exprTerms)"
             )
 
 -- binary operators

@@ -230,6 +230,8 @@ spec = do
         it "Should parse non-empty while statements" $
             parseStmt "while (True) { return 1; }" `shouldParse`
                 (SplWhileStmt literalTrue [SplReturnStmt literalOne])
+        it "should parse a return of a tuple" $
+            parseStmt "return (1, 1);" `shouldParse` (SplReturnStmt (SplTupleExpr literalOne literalOne))
         it "Should parse function calls" $
             parseStmt "fun ();" `shouldParse` (SplFuncCallStmt "fun" [])
         it "Should parse function calls with args" $
