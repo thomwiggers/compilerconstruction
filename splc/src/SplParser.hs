@@ -76,8 +76,24 @@ exprTerms :: Parser SplExpr
 exprTerms = (SplIntLiteralExpr <$> int)
         <|> (SplBooleanLiteralExpr <$> bool)
         <|> (SplCharLiteralExpr <$> character)
-        <|> (parens expr <?> "Subexpression")
-        <|> (SplIdentifierExpr <$> identifier <*> field)
+        -- Parse tuples or parentheses
+        -- If we use try, runtime explodes
+        <|> (do
+                left <- symbol "(" *> expr
+                c <- symbol ")" <|> symbol ","
+                if (c == ")")
+                    then (return left)
+                    else (SplTupleExpr left <$> expr)
+            )
+        <|> (do
+                name <- identifier
+                c <- option "NONE" (lookAhead (symbol "." <|> symbol "("))
+                case c of
+                    "NONE" -> return $ SplIdentifierExpr name SplFieldNone
+                    "(" -> (SplFuncCallExpr name) <$> parens (expr `sepBy` symbol ",")
+                    "." -> (SplIdentifierExpr name) <$> field
+                    _ -> fail "This should never happen"
+            )
 
 -- binary operators
 operators :: [[Operator Parser SplExpr]]

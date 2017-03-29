@@ -140,6 +140,16 @@ spec = do
             parseExpr "id.hd.tl" `shouldParse` (SplIdentifierExpr "id" (SplFieldHd $ SplFieldTl $ SplFieldNone))
         it "Parses variables in expressions" $
             parseExpr "a + 1" `shouldParse` (SplBinaryExpr SplOperatorAdd (SplIdentifierExpr "a" SplFieldNone) literalOne)
+        it "Parses tuples" $
+            parseExpr "(1, 1)" `shouldParse` (SplTupleExpr literalOne literalOne)
+        it "Parses function calls" $
+            parseExpr "foo()" `shouldParse` (SplFuncCallExpr "foo" [])
+        it "Parses function calls with one arg" $
+            parseExpr "foo(1)" `shouldParse` (SplFuncCallExpr "foo" [literalOne])
+        it "Parses function calls with two args" $
+            parseExpr "foo(1, 1)" `shouldParse` (SplFuncCallExpr "foo" [literalOne, literalOne])
+        it "Parses nested parentheses" $
+            parseExpr "(((((1)))))" `shouldParse` literalOne
     describe "spl" $ do
         it "Does not parse empty files" $
             parseSpl `shouldFailOn` ""
