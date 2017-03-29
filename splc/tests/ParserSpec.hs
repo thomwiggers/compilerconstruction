@@ -113,8 +113,8 @@ spec = do
             parseExpr "1 + 1 * 1" `shouldParse` (SplBinaryExpr SplOperatorAdd literalOne (SplBinaryExpr SplOperatorMultiply literalOne literalOne))
         it "parses (1 + 1) * 1 with the correct priority" $
             parseExpr "(1 + 1) * 1" `shouldParse` (SplBinaryExpr SplOperatorMultiply (SplBinaryExpr SplOperatorAdd literalOne literalOne) literalOne)
-        it "Parses 'True && ~True'" $
-            parseExpr "True && ~True" `shouldParse` (SplBinaryExpr SplOperatorAnd literalTrue (SplUnaryExpr SplOperatorInvert literalTrue))
+        it "Parses 'True && !True'" $
+            parseExpr "True && !True" `shouldParse` (SplBinaryExpr SplOperatorAnd literalTrue (SplUnaryExpr SplOperatorInvert literalTrue))
         it "Parses 'True || True && True'" $
             parseExpr "True || True && True" `shouldParse` (SplBinaryExpr SplOperatorOr literalTrue (SplBinaryExpr SplOperatorAnd literalTrue literalTrue))
         it "doesn't parse half binary expressions (1 + )" $ property $
@@ -122,7 +122,7 @@ spec = do
                 \(x, _) -> parseExpr `shouldFailOn` ("1 " ++ x)
         it "doesn't parse half binary expressions (* 1)" $ property $
             forAll (elements theBinaryOperators) $
-                \(x, _) -> not (x `elem` ["-", "~"]) ==> parseExpr `shouldFailOn` (x ++ " 1")
+                \(x, _) -> not (x `elem` ["-", "!"]) ==> parseExpr `shouldFailOn` (x ++ " 1")
         it "parses Integer literals" $ property $
             -- > 0 because otherwise we get a unary expression with -
             \x -> x >=0 ==> parseExpr (show x) `shouldParse` (SplIntLiteralExpr x)
@@ -252,7 +252,7 @@ spec = do
         parseStmt = parse stmt ""
         parseExpr = parse expr ""
         theUnaryOperators = [
-                ("~", SplOperatorInvert),
+                ("!", SplOperatorInvert),
                 ("-", SplOperatorNegate)
             ]
         theBinaryOperators = [

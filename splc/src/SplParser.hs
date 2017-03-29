@@ -102,7 +102,7 @@ operators :: [[Operator Parser SplExpr]]
 operators = [
         [
             Prefix (SplUnaryExpr SplOperatorNegate <$ symbol "-"),
-            Prefix (SplUnaryExpr SplOperatorInvert <$ symbol "~")
+            Prefix (SplUnaryExpr SplOperatorInvert <$ symbol "!")
         ],
         [
             InfixL (SplBinaryExpr SplOperatorMultiply <$ symbol "*"),
