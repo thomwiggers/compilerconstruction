@@ -73,9 +73,24 @@ data SplBinaryOperator = SplOperatorAdd
                        | SplOperatorAnd
                        | SplOperatorOr
                        | SplOperatorCons
-    deriving (Eq, Show)
+    deriving (Eq)
 
 data SplUnaryOperator = SplOperatorInvert
                       | SplOperatorNegate
     deriving (Show, Eq)
 
+instance Show SplBinaryOperator where
+    show SplOperatorAdd = "+"
+    show SplOperatorSubtract = "-"
+    show SplOperatorMultiply = "*"
+    show SplOperatorDivide = "/"
+    show SplOperatorModulus = "%"
+    show SplOperatorLess = "<"
+    show SplOperatorLessEqual = "<="
+    show SplOperatorEqual = "=="
+    show SplOperatorGreaterEqual = ">="
+    show SplOperatorGreater = ">"
+    show SplOperatorNotEqual = "!="
+    show SplOperatorAnd = "&&"
+    show SplOperatorOr = "||"
+    show SplOperatorCons = ":"

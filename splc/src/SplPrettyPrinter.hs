@@ -93,20 +93,7 @@ printUnaryOperator SplOperatorInvert = text "~"
 printUnaryOperator SplOperatorNegate = text "-"
 
 printBinaryOperator :: SplBinaryOperator -> Doc
-printBinaryOperator SplOperatorAdd = text "+"
-printBinaryOperator SplOperatorSubtract = text "-"
-printBinaryOperator SplOperatorMultiply = text "*"
-printBinaryOperator SplOperatorDivide = text "/"
-printBinaryOperator SplOperatorModulus = text "%"
-printBinaryOperator SplOperatorLess = text "<"
-printBinaryOperator SplOperatorLessEqual = text "<="
-printBinaryOperator SplOperatorEqual = text "=="
-printBinaryOperator SplOperatorGreaterEqual = text ">="
-printBinaryOperator SplOperatorGreater = text ">"
-printBinaryOperator SplOperatorNotEqual = text "!="
-printBinaryOperator SplOperatorAnd = text "&&"
-printBinaryOperator SplOperatorOr = text "||"
-printBinaryOperator SplOperatorCons = text ":"
+printBinaryOperator t = text (show t)
 
 -- helper function, joins [a, b, .., c] into "a, b, .., c"
 commaSep :: [Doc] -> Doc
