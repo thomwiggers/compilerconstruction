@@ -150,6 +150,12 @@ spec = do
             parseExpr "foo(1, 1)" `shouldParse` (SplFuncCallExpr "foo" [literalOne, literalOne])
         it "Parses nested parentheses" $
             parseExpr "(((((1)))))" `shouldParse` literalOne
+        it "parses an empty list expression" $
+            parseExpr "[]" `shouldParse` SplEmptyListExpr
+        it "parses many -'s" $
+            parseExpr "---------------- 1" `shouldParse` (SplUnaryExpr SplOperatorNegate (SplUnaryExpr SplOperatorNegate (SplUnaryExpr SplOperatorNegate (SplUnaryExpr SplOperatorNegate (SplUnaryExpr SplOperatorNegate (SplUnaryExpr SplOperatorNegate (SplUnaryExpr SplOperatorNegate (SplUnaryExpr SplOperatorNegate (SplUnaryExpr SplOperatorNegate (SplUnaryExpr SplOperatorNegate (SplUnaryExpr SplOperatorNegate (SplUnaryExpr SplOperatorNegate (SplUnaryExpr SplOperatorNegate (SplUnaryExpr SplOperatorNegate (SplUnaryExpr SplOperatorNegate (SplUnaryExpr SplOperatorNegate (SplIntLiteralExpr 1)))))))))))))))))
+        it "parses many !'s" $
+            parseExpr "!!!!!!!!!!!!!!!! True" `shouldParse` (SplUnaryExpr SplOperatorInvert (SplUnaryExpr SplOperatorInvert (SplUnaryExpr SplOperatorInvert (SplUnaryExpr SplOperatorInvert (SplUnaryExpr SplOperatorInvert (SplUnaryExpr SplOperatorInvert (SplUnaryExpr SplOperatorInvert (SplUnaryExpr SplOperatorInvert (SplUnaryExpr SplOperatorInvert (SplUnaryExpr SplOperatorInvert (SplUnaryExpr SplOperatorInvert (SplUnaryExpr SplOperatorInvert (SplUnaryExpr SplOperatorInvert (SplUnaryExpr SplOperatorInvert (SplUnaryExpr SplOperatorInvert (SplUnaryExpr SplOperatorInvert (SplBooleanLiteralExpr True)))))))))))))))))
     describe "spl" $ do
         it "Does not parse empty files" $
             parseSpl `shouldFailOn` ""

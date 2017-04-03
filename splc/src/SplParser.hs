@@ -14,8 +14,8 @@ spl = Spl <$> (sc *> parseDecls <* eof)
 
 parseDecls :: Parser [SplDecl]
 parseDecls = some $
-        (try ((SplDeclVar <$> varDecl) <?> "Variable definition"))
-    <|> (try (funDecl <?> "Function definition"))
+        (try (SplDeclVar <$> varDecl) <?> "Variable definition")
+    <|> (try funDecl <?> "Function definition")
 
 -- variable declarations
 varDecl :: Parser SplVarDecl
@@ -75,6 +75,7 @@ expr = makeExprParser exprTerms operators
 exprTerms :: Parser SplExpr
 exprTerms = (SplIntLiteralExpr <$> int)
         <|> (SplBooleanLiteralExpr <$> bool)
+        <|> (string "[]" *> sc *> pure SplEmptyListExpr)
         <|> (SplCharLiteralExpr <$> character)
         -- Parse tuples or parentheses
         -- If we use try, runtime explodes
@@ -101,8 +102,8 @@ exprTerms = (SplIntLiteralExpr <$> int)
 operators :: [[Operator Parser SplExpr]]
 operators = [
         [
-            Prefix (SplUnaryExpr SplOperatorNegate <$ symbol "-"),
-            Prefix (SplUnaryExpr SplOperatorInvert <$ symbol "!")
+            Prefix (manyUnary $ SplUnaryExpr SplOperatorNegate <$ symbol "-"),
+            Prefix (manyUnary $ SplUnaryExpr SplOperatorInvert <$ symbol "!")
         ],
         [
             InfixL (SplBinaryExpr SplOperatorMultiply <$ symbol "*"),
@@ -132,6 +133,8 @@ operators = [
         ]
     ]
     where
+        manyUnary :: Parser (SplExpr -> SplExpr) -> Parser (SplExpr -> SplExpr)
+        manyUnary x = foldr1 (.) <$> some x
         readOperator :: String -> Parser ()
         readOperator s = void (string s) <* sc
 
