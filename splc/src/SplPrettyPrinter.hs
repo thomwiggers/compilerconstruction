@@ -71,8 +71,8 @@ printBasicType SplChar = text "Char"
 printExpr :: SplExpr -> Doc
 printExpr (SplIdentifierExpr name field) = text name <> printField field
 printExpr (SplBinaryExpr op a b) = 
-    parens (printExpr a) <+> printBinaryOperator op <+> parens (printExpr b)
-printExpr (SplUnaryExpr op a) = printUnaryOperator op <> parens (printExpr a)
+    maybeParensPrint a <+> printBinaryOperator op <+> maybeParensPrint b
+printExpr (SplUnaryExpr op a) = printUnaryOperator op <> maybeParensPrint a
 printExpr (SplIntLiteralExpr i) = integer i
 printExpr (SplCharLiteralExpr c) = quotes $ char c
 printExpr (SplBooleanLiteralExpr True) = text "True"
@@ -80,6 +80,11 @@ printExpr (SplBooleanLiteralExpr False) = text "False"
 printExpr (SplFuncCallExpr name args) = text name <> parens (commaSep $ map printExpr args)
 printExpr SplEmptyListExpr = text "[]"
 printExpr (SplTupleExpr a b) = parens (printExpr a <> comma <+> printExpr b)
+
+maybeParensPrint :: SplExpr -> Doc
+maybeParensPrint e@(SplBinaryExpr SplOperatorCons _ _) = printExpr e
+maybeParensPrint e@(SplBinaryExpr _ _ _) = parens (printExpr e)
+maybeParensPrint e = printExpr e
 
 printField :: SplField -> Doc
 printField SplFieldNone = empty
@@ -89,7 +94,7 @@ printField (SplFieldFst f) = text ".fst" <> printField f
 printField (SplFieldSnd f) = text ".snd" <> printField f
 
 printUnaryOperator :: SplUnaryOperator -> Doc
-printUnaryOperator SplOperatorInvert = text "~"
+printUnaryOperator SplOperatorInvert = text "!"
 printUnaryOperator SplOperatorNegate = text "-"
 
 printBinaryOperator :: SplBinaryOperator -> Doc
