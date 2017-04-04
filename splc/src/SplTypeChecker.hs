@@ -70,7 +70,8 @@ instance SplTypeChecker SplDecl where
         when declared
             (fail $ "Variable " ++ name ++ " already declared")
 
-        -- TODO check for duplicate names
+        when (nub argNames /= argNames) $
+            fail $ "Duplicate argument names in function declaration " ++ name
 
         checkedArgTypes <- mapM (\x -> typeCheck x >>= unsimple) argTypes
         localState <- get
@@ -92,8 +93,10 @@ instance SplTypeChecker SplDecl where
             fail $ "Cannot unify return type " ++ (show retType) ++
                 " with actual type " ++ (show blockType) ++ "."
 
-        put globalState
-        return $ SplTypeFunction checkedArgTypes retType'
+        let functionType = SplTypeFunction checkedArgTypes retType'
+        put (Map.insert name functionType globalState)
+
+        return functionType
 
 
 instance SplTypeChecker SplVarDecl where
