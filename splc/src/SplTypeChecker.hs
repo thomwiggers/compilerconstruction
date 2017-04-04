@@ -117,8 +117,14 @@ instance SplTypeChecker SplExpr where
                 then returnSimple exprType
                 else fail "Cannot invert a non-Int"
 
-    -- TODO fix cons: it has t × [t] -> t instead of t × t -> t
-    typeCheck (SplBinaryExpr SplOperatorCons _ _) = fail "FIXME"
+    typeCheck (SplBinaryExpr SplOperatorCons e1 e2) = do
+        e1Type <- typeCheck e1 >>= unsimple >>= disallowVoid
+        e2Type <- typeCheck e2 >>= unsimple >>= disallowVoid
+        case e2Type of
+            SplTypeListR t2 -> if (e1Type == t2)
+                then returnSimple e2Type
+                else fail $ "Expected list of type " ++ (show e1Type)
+            _ -> fail "Cons expects a list as second argument"
 
     typeCheck (SplBinaryExpr op e1 e2) = do
         e1Type <- typeCheck e1 >>= unsimple >>= disallowVoid
