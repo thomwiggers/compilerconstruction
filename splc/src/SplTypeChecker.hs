@@ -87,6 +87,52 @@ typeCheckField _ (SplFieldTl _) = fail "Cannot take tl of a non-list"
 typeCheckField _ (SplFieldFst _) = fail "Cannot take fst of a non-tuple"
 typeCheckField _ (SplFieldSnd _) = fail "Cannot take snd of a non-tuple"
 
+instance SplTypeChecker [SplStmt] where
+    typeCheck [] = returnSimple SplVoid
+    typeCheck (x:xs) = do
+        xType <- typeCheck x >>= unsimple
+        xsType <- typeCheck xs >>= unsimple
+        case xType of
+            SplVoid -> returnSimple xsType
+            t1 -> case xsType of
+                    SplVoid -> returnSimple xType
+                    t2 -> if (t1 == t2)
+                        then returnSimple t1
+                        else fail $ "Different return types: " ++
+                            (show t1) ++ " and " ++ (show t2) ++ "."
+
+
+instance SplTypeChecker SplStmt where
+    typeCheck (SplIfStmt cond thenStmts elseStmts) = do
+        condType <- typeCheck cond >>= unsimple
+        when (condType /= SplTypeConst SplBool) $
+            fail $ "Condition needs to be a Bool instead of a " ++ (show condType)
+        typeCheck (thenStmts ++ elseStmts)
+
+    typeCheck (SplWhileStmt cond stmts) = do
+        condType <- typeCheck cond >>= unsimple
+        when (condType /= SplTypeConst SplBool) $
+            fail $ "Condition needs to be a Bool instead of a " ++ (show condType)
+        typeCheck stmts
+
+    typeCheck (SplAssignmentStmt name field expr) = do
+        varType' <- gets (Map.lookup name)
+        varType <- case varType' of
+            Just t -> unsimple t >>= (flip typeCheckField field) >>= unsimple
+            Nothing -> fail $ "Undeclared variable " ++ name
+        exprType <- typeCheck expr >>= unsimple >>= disallowVoid
+        if (exprType == varType)
+            then returnSimple SplVoid
+            else fail $ "Cannot assign result of type " ++ (show exprType) ++
+                    " to variable of type " ++ (show varType) ++ "."
+
+    typeCheck (SplFuncCallStmt name args) = checkFunctionCall name args
+
+    typeCheck (SplReturnStmt e) =
+            typeCheck e >>= unsimple >>= disallowVoid >>= returnSimple
+
+    typeCheck SplReturnVoidStmt = returnSimple SplVoid
+
 
 instance SplTypeChecker SplExpr where
     typeCheck (SplIntLiteralExpr _) = returnSimple $ SplTypeConst SplInt
@@ -135,28 +181,32 @@ instance SplTypeChecker SplExpr where
                 ++ " " ++ (show e2Type))
         typeCheckBinOp op e1Type
 
-    typeCheck (SplFuncCallExpr name args) = do
-        funcType <- gets (Map.lookup name)
-        case funcType of
-            Nothing -> fail $ "Undeclared function name " ++ name
-            Just (SplSimple _) -> fail "Expected function, got variable"
-            Just (SplTypeFunction argTypes retType) -> (do
-                    when (length args /= length argTypes) (
-                            fail ("Got " ++ (show . length) args ++
-                                  " arguments but expected " ++ (show . length) argTypes))
-                    argTypeResults <- mapM typeCheck args
-                    let result = all checkArgType (zip argTypes argTypeResults)
-                    if result
-                        then returnSimple retType
-                        else fail ("Error checking arguments for " ++ name ++ ":\n"
-                                     ++ "Expected: " ++ (intercalate ", " (map show args)) ++ "\n"
-                                     ++ "Got:      " ++ (intercalate ", " (map show argTypes)))
+    typeCheck (SplFuncCallExpr name args) = checkFunctionCall name args
 
-                )
-        where
-            checkArgType :: (SplSimpleTypeR, SplTypeR) -> Bool
-            checkArgType (expected, SplSimple actual) = actual == expected && notVoid actual
-            checkArgType _ = False
+
+checkFunctionCall :: String -> [SplExpr] -> SplTypeCheckResult
+checkFunctionCall name args = do
+    funcType <- gets (Map.lookup name)
+    case funcType of
+        Nothing -> fail $ "Undeclared function name " ++ name
+        Just (SplSimple _) -> fail "Expected function, got variable"
+        Just (SplTypeFunction argTypes retType) -> (do
+                when (length args /= length argTypes) (
+                        fail ("Got " ++ (show . length) args ++
+                              " arguments but expected " ++ (show . length) argTypes))
+                argTypeResults <- mapM typeCheck args
+                let result = all checkArgType (zip argTypes argTypeResults)
+                if result
+                    then returnSimple retType
+                    else fail ("Error checking arguments for " ++ name ++ ":\n"
+                                 ++ "Expected: " ++ (intercalate ", " (map show args)) ++ "\n"
+                                 ++ "Got:      " ++ (intercalate ", " (map show argTypes)))
+
+            )
+    where
+        checkArgType :: (SplSimpleTypeR, SplTypeR) -> Bool
+        checkArgType (expected, SplSimple actual) = actual == expected && notVoid actual
+        checkArgType _ = False
 
 typeCheckBinOp :: SplBinaryOperator -> SplSimpleTypeR -> SplTypeCheckResult
 typeCheckBinOp SplOperatorAdd t@(SplTypeConst SplInt) = returnSimple t
