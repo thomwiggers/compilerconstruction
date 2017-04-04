@@ -146,8 +146,19 @@ stmt = (readWord "return" *> (
     <|> (readWord "if" *> (SplIfStmt <$> parens expr <*> braces (many stmt)
             <*> option [] (readWord "else" *> braces (many stmt))))
     <|> (readWord "while" *> (SplWhileStmt <$> parens expr <*> braces (many stmt)))
-    <|> try (SplAssignmentStmt <$> identifier <*> field <* (symbol "=") <*> expr <* symbol ";")
-    <|> try (SplFuncCallStmt <$> identifier <*> parens (expr `sepBy` symbol ",") <* symbol ";")
+    -- parse assignments or function calls
+    -- Using try to handle the overlapping prefixes (identifiers) is slow
+    <|> (do
+            name <- identifier
+            c <- option "NONE" (lookAhead (symbol "." <|> symbol "("))
+            case c of
+                "NONE" -> (SplAssignmentStmt name SplFieldNone) <$> parseAssignmentTail
+                "(" -> (SplFuncCallStmt name) <$> parens (expr `sepBy` symbol ",") <* symbol ";"
+                "." -> (SplAssignmentStmt name) <$> field <*> parseAssignmentTail
+                _ -> fail "This should never happen (in exprTerms)"
+        )
+    where
+        parseAssignmentTail = (symbol "=") *> expr <* symbol ";"
 
 field :: Parser SplField
 field = char '.' *> (
