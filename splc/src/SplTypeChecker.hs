@@ -61,6 +61,41 @@ instance SplTypeChecker SplType where
         returnSimple (SplTypeListR at)
     typeCheck (SplType t) = returnSimple $ SplTypeConst t
 
+
+instance SplTypeChecker SplDecl where
+    typeCheck (SplDeclVar varDecl) = typeCheck varDecl
+
+    typeCheck (SplDeclFun name argNames argTypes retType varDecls stmts) = do
+        declared <- gets (Map.member name)
+        when declared
+            (fail $ "Variable " ++ name ++ " already declared")
+
+        -- TODO check for duplicate names
+
+        checkedArgTypes <- mapM (\x -> typeCheck x >>= unsimple) argTypes
+        localState <- get
+        globalState <- get
+
+        let nameArgs = zip argNames (map SplSimple checkedArgTypes)
+        let localState' = foldr (\(s, n) -> Map.insert s n) localState nameArgs
+        put localState'
+
+        mapM_ (\x -> typeCheck x >>= unsimple) varDecls
+
+        retType' <- case retType of
+            SplRetType t ->  typeCheck t >>= unsimple
+            SplRetVoid -> return SplVoid
+
+        blockType <- typeCheck stmts >>= unsimple
+
+        when (blockType /= retType') $
+            fail $ "Cannot unify return type " ++ (show retType) ++
+                " with actual type " ++ (show blockType) ++ "."
+
+        put globalState
+        return $ SplTypeFunction checkedArgTypes retType'
+
+
 instance SplTypeChecker SplVarDecl where
     typeCheck (SplVarDecl varType name expr) = do
         t <- typeCheck varType
