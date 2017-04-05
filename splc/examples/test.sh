@@ -32,4 +32,18 @@ for f in examples/*.spl; do
     fi
 done
 
+for f in examples/fails/*.spl; do
+    echo -en "Checking if parsing $f fails: \t\t"
+    if ! pretty "$f" > /dev/null 2>&1; then
+        echo "Success"
+    else
+        code=1
+        echo "Failed"
+        echo "==== OUTPUT of pretty $f ====="
+        pretty $f
+        echo "=============================="
+        echo
+    fi
+done
+
 exit $code
