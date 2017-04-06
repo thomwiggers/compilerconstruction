@@ -1,26 +1,30 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE FlexibleContexts #-}
+
 module SplTypeChecker where
 
-import qualified Data.Map as Map
-
-import Prelude hiding (fail)
-import Data.List
-import Control.Monad (when)
-import Control.Monad.Fail
-import Control.Monad.Trans.State
 import SplAST
 
--- Silly Haskell didn't make Either a MonadFail, let's do it anyway
-instance MonadFail (Either String) where
-    fail s = Left s
+import Prelude
+import Control.Monad.State
+import Control.Monad.Except
+import Data.List (nub)
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 
-type Environment = Map.Map String SplTypeR
-type SplTypeCheckResult = StateT Environment (Either String) SplTypeR
+-- Leans strongly on http://dev.stephendiehl.com/fun/006_hindley_milner.html
+
+type Name = String
+
+newtype TVar = TV String
+    deriving (Show, Eq, Ord)
 
 data SplSimpleTypeR = SplTypeConst SplBasicType
                     | SplTypeTupleR SplSimpleTypeR SplSimpleTypeR
                     | SplTypeListR SplSimpleTypeR
-                    | SplTypeVar Int
+                    | SplTypeVar TVar
                     | SplVoid
         deriving (Show, Eq)
 
@@ -28,8 +32,236 @@ data SplTypeR = SplSimple SplSimpleTypeR
               | SplTypeFunction [SplSimpleTypeR] SplSimpleTypeR
         deriving (Show, Eq)
 
-emptyEnvironment :: Environment
-emptyEnvironment = Map.empty
+data Scheme = Forall [TVar] SplTypeR
+
+data TypeKind
+    = TPV -- TypePlaceholderVariable: like a in "a fiets = 1;"
+    | Var -- Variable or function names
+    deriving (Eq, Show, Ord)
+
+-- a map from names to schemes
+newtype TypeEnv = TypeEnv (Map.Map (TypeKind, Name) Scheme)
+    deriving Monoid
+
+data TypeError
+    = UnificationFail SplTypeR SplTypeR
+    | InfiniteType TVar SplTypeR
+    | UnboundVariable Name
+    | UnexpectedFunction SplTypeR
+    | UnexpectedVoid
+
+data Unique = Unique { count :: Int }
+
+type Infer a = ExceptT TypeError (State Unique) a
+type Subst = Map.Map TVar SplTypeR
+
+
+runInfer :: Infer (Subst, SplTypeR) -> Either TypeError Scheme
+runInfer m = case evalState (runExceptT m) initUnique of
+    Left err -> Left err
+    Right res -> Right $ closeOver res
+
+closeOver :: (Map.Map TVar SplTypeR, SplTypeR) -> Scheme
+closeOver (sub, ty) = normalize sc
+    where sc = generalize emptyTypeEnv (apply sub ty)
+
+normalize :: Scheme -> Scheme
+normalize (Forall _ body) = Forall (fmap snd ord) (normtype body)
+    where
+        ord = zip (nub $ fv body) (fmap TV letters)
+
+        fv (SplSimple (SplTypeVar a)) = [a]
+        fv (SplSimple (SplTypeListR a)) = fv (SplSimple a)
+        fv (SplSimple (SplTypeTupleR l r)) = fv (SplSimple l) ++ fv (SplSimple r)
+        fv (SplTypeFunction argTypes retType) = (concat . (map (fv . SplSimple))) argTypes ++ fv (SplSimple retType)
+        fv _ = []
+
+        normtype :: SplTypeR -> SplTypeR
+        normtype (SplTypeFunction argTypes retType) = SplTypeFunction (map normtypeS argTypes)  (normtypeS retType)
+        normtype (SplSimple t) = SplSimple $ normtypeS t
+
+        normtypeS :: SplSimpleTypeR -> SplSimpleTypeR
+        normtypeS a@(SplTypeConst _) = a
+        normtypeS (SplTypeTupleR a b) = SplTypeTupleR (normtypeS a) (normtypeS b)
+        normtypeS (SplTypeListR a) = SplTypeListR (normtypeS a)
+        normtypeS SplVoid = SplVoid
+        normtypeS (SplTypeVar a) =
+            case lookup a ord of
+                Just x -> SplTypeVar x
+                Nothing -> error "type variable not in signature"
+
+
+nullSubst :: Subst
+nullSubst = Map.empty
+
+emptyTypeEnv :: TypeEnv
+emptyTypeEnv = TypeEnv Map.empty
+
+initUnique :: Unique
+initUnique = Unique {count = 0}
+
+compose :: Subst -> Subst -> Subst
+s1 `compose` s2 = Map.map (apply s1) s2 `Map.union` s1
+
+extend :: TypeEnv -> ((TypeKind, Name), Scheme) -> TypeEnv
+extend (TypeEnv env) (x, s) = TypeEnv $ Map.insert x s env
+
+class Substitutable a where
+    apply :: Subst -> a -> a
+    ftv :: a -> Set.Set TVar
+
+instance Substitutable SplTypeR where
+    apply s (SplSimple t) = SplSimple $ apply s t
+    apply s (SplTypeFunction argTypes retType) = SplTypeFunction (apply s argTypes) (apply s retType)
+
+    ftv (SplTypeFunction argTypes retType) = ftv argTypes `Set.union` ftv retType
+    ftv (SplSimple t) = ftv t
+
+instance Substitutable SplSimpleTypeR where
+    apply _ t@(SplTypeConst _) = t
+    apply s (SplTypeTupleR l r) = SplTypeTupleR (apply s l) (apply s r)
+    apply s (SplTypeListR t) = SplTypeListR (apply s t)
+    apply s t@(SplTypeVar a) = do
+        case Map.findWithDefault (SplSimple t) a s of
+            SplSimple r -> r
+            _ -> t
+    apply _ SplVoid = SplVoid
+
+    ftv SplVoid = Set.empty
+    ftv (SplTypeConst _) = Set.empty
+    ftv (SplTypeTupleR l r) = ftv l `Set.union` ftv r
+    ftv (SplTypeListR t) = ftv t
+    ftv (SplTypeVar a) = Set.singleton a
+
+instance Substitutable Scheme where
+    apply s (Forall as t) = Forall as $ apply s' t
+        where s' = foldr Map.delete s as
+    ftv (Forall as t) = ftv t `Set.difference` Set.fromList as
+
+instance Substitutable a => Substitutable [a] where
+    apply = fmap . apply
+    ftv = foldr (Set.union . ftv) Set.empty
+
+instance Substitutable TypeEnv where
+    apply s (TypeEnv env) = TypeEnv $ Map.map (apply s) env
+    ftv (TypeEnv env) = ftv $ Map.elems env
+
+-- ["α", "β", ..., "ω", "αα", ... ]
+letters :: [String]
+letters = [1..] >>= flip replicateM ['α' .. 'ω']
+
+-- Get fresh type vars
+fresh :: Infer SplSimpleTypeR
+fresh = do
+    s <- get
+    put s{count = count s + 1}
+    return $ SplTypeVar $ TV (letters !! count s)
+
+-- Check if a type variable exists before we try to replace it
+occursCheck :: Substitutable a => TVar -> a -> Bool
+occursCheck a t = a `Set.member` ftv t
+
+-- unify
+class Unify a where
+    unify :: a -> a -> Infer Subst
+
+instance Unify SplTypeR where
+    unify (SplSimple t) (SplSimple t') = unify t t'
+    unify (SplTypeFunction argTypes retType) (SplTypeFunction argTypes' retType') = do
+        s1 <- recApply nullSubst argTypes argTypes'
+        s2 <- unify (apply s1 retType) (apply s1 retType')
+        return (s2 `compose` s1)
+        where
+            recApply _ [] [] = return nullSubst
+            recApply s [x] [y] = do
+                s1 <- unify x y
+                return (s1 `compose` s)
+            recApply s (x:x':xs) (y:y':ys) = do
+                s1 <- unify x y
+                recApply (s1 `compose` s) ((apply s1 x'):xs) ((apply s1 y'):ys)
+            recApply _ _ _ = fail "Unequal number of arguments"
+
+    unify t1 t2 = throwError $ UnificationFail t1 t2
+
+instance Unify SplSimpleTypeR where
+    unify (SplTypeConst a) (SplTypeConst b) | a == b = return nullSubst
+    unify (SplTypeVar a) t = bind a t
+    unify t (SplTypeVar a) = bind a t
+    unify (SplTypeTupleR l r) (SplTypeTupleR l' r') = do
+        s1 <- unify l l'
+        s2 <- unify (apply s1 r) (apply s1 r')
+        return (s2 `compose` s1)
+    unify (SplTypeListR a) (SplTypeListR b) = unify a b
+    unify t1 t2 = throwError $ UnificationFail (SplSimple t1) (SplSimple t2)
+
+bind :: TVar -> SplSimpleTypeR -> Infer Subst
+bind a t
+  | t == SplTypeVar a = return nullSubst
+  | occursCheck a t = throwError $ InfiniteType a (SplSimple t)
+  | otherwise = return $ Map.singleton a (SplSimple t)
+
+instantiate :: Scheme -> Infer SplTypeR
+instantiate (Forall as t) = do
+    as' <- mapM (const fresh) as
+    let s = (Map.fromList $ zip as (map SplSimple as')) :: Subst
+    return $ apply s t
+
+generalize :: TypeEnv -> SplTypeR -> Scheme
+generalize env t = Forall as t
+    where as = Set.toList $ ftv t `Set.difference` ftv env
+
+returnSimple :: (Monad m) => Subst -> SplSimpleTypeR -> m (Subst, SplTypeR)
+returnSimple s x = return (s, SplSimple x)
+
+unsimple :: MonadError TypeError m => (s1, SplTypeR) -> m (s1, SplSimpleTypeR)
+unsimple (s1, SplSimple s) = return (s1, s)
+unsimple (s, t) = throwError $ UnexpectedFunction t
+
+class Inferer a where
+    infer :: TypeEnv -> a -> Infer (Subst, SplTypeR)
+
+lookupEnv :: TypeEnv -> (TypeKind, Name) -> Infer (Subst, SplTypeR)
+lookupEnv (TypeEnv env) x = do
+  case Map.lookup x env of
+    Nothing -> throwError $ UnboundVariable (show x)
+    Just s  -> do t <- instantiate s
+                  return (nullSubst, t)
+
+instance Inferer SplType where
+    infer _ (SplType a) = returnSimple nullSubst (SplTypeConst a)
+    infer env (SplTypeList a) = do
+        (s1, t1) <- infer env a >>= unsimple
+        returnSimple s1 (SplTypeListR t1)
+    infer env (SplTypeTuple l r) = do
+        (s1, t1) <- infer env l >>= unsimple
+        let env' = apply s1 env
+        (s2, t2) <- infer env' r >>= unsimple
+        returnSimple (s2 `compose` s1) (SplTypeTupleR t1 t2)
+    infer _ (SplTypeUnknown) = do
+        var <- fresh
+        returnSimple nullSubst var
+    infer s@(TypeEnv env) (SplTypePlaceholder str) = do
+        case Map.lookup (TPV, str) env of
+            Nothing -> do
+                n <- fresh
+                return (nullSubst, SplSimple n)
+            Just (Forall _ t) -> return (nullSubst, t)
+
+
+{-
+instance Inferer SplVarDecl where
+    -- <type> <name> = <expr>;
+    infer env (SplVarDecl t name expr) = do
+        -- get declared type
+        (_, t') <- infer env t >>= unsimple
+
+        -- Check expr
+        -- unify with t'
+        -- insert result for name into env
+
+-}
+
+{-
 
 class SplTypeChecker a where
     typeCheck :: a -> SplTypeCheckResult
@@ -282,3 +514,4 @@ typeCheckBinOp SplOperatorOr t@(SplTypeConst SplBool) = returnSimple t
 
 typeCheckBinOp SplOperatorCons _ = fail "Don't use typeCheckBinOp on Cons, dummy"
 typeCheckBinOp o t = fail $ "Unsupported operands of type " ++ (show t) ++ " for operator " ++ (show o)
+-}
