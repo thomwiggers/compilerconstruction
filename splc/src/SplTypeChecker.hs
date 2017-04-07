@@ -103,8 +103,8 @@ initEnv = SplEnv {count = 0, typeEnv = emptyTypeEnv}
 compose :: Subst -> Subst -> Subst
 s1 `compose` s2 = Map.map (apply s1) s2 `Map.union` s1
 
-extend :: TypeEnv -> ((TypeKind, Name), Scheme) -> TypeEnv
-extend (TypeEnv env) (x, s) = TypeEnv $ Map.insert x s env
+extend :: ((TypeKind, Name), Scheme) -> SplEnv -> SplEnv
+extend (x, scheme) s@(SplEnv {typeEnv=TypeEnv env}) = s{typeEnv = TypeEnv $ Map.insert x scheme env}
 
 class Substitutable a where
     apply :: Subst -> a -> a
@@ -249,11 +249,13 @@ instance Inferer SplType where
         (TypeEnv env) <- gets typeEnv
         case Map.lookup (TPV, str) env of
             Nothing -> do
-                n <- fresh
-                return (nullSubst, SplSimple n)
+                n <- SplSimple <$> fresh
+                modify (extend ((TPV, str), Forall [] n))
+                return (nullSubst, n)
             Just (Forall _ t) -> return (nullSubst, t)
 
 {-
+
 instance Inferer SplVarDecl where
     -- <type> <name> = <expr>;
     infer (SplVarDecl t name expr) = do
