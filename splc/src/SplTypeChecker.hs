@@ -254,24 +254,24 @@ instance Inferer SplType where
                 return (nullSubst, n)
             Just (Forall _ t) -> return (nullSubst, t)
 
-{-
 
 instance Inferer SplVarDecl where
     -- <type> <name> = <expr>;
     infer (SplVarDecl t name expr) = do
         -- get declared type
-        (_, t') <- infer env t >>= unsimple
-        (s1, et) <- infer env expr >>= unsimple
-        let env' = apply s env
+        (_, t') <- infer t >>= unsimple
+        (s1, et) <- infer expr >>= unsimple
+        modify $ apply s1  -- update env
         s2 <- unify t' et
+        modify $ apply s2
         --do something
-        Map.insert env name (apply s2 t')
+        modify $ extend ((Var, name), apply s2 (Forall [] $ SplSimple t'))
 
-        -- Check expr
-        -- unify with t'
-        -- insert result for name into env
+        returnSimple (s2 `compose` s1) SplVoid
 
--}
+
+instance Inferer SplExpr where
+    infer _ = error "nyi"
 
 {-
 
