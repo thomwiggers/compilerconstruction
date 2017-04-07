@@ -50,14 +50,14 @@ data TypeError
     | UnexpectedFunction SplTypeR
     | UnexpectedVoid
 
-data Unique = Unique { count :: Int }
+data SplEnv = SplEnv { count :: Int, typeEnv :: TypeEnv }
 
-type Infer a = ExceptT TypeError (State Unique) a
+type Infer a = ExceptT TypeError (State SplEnv) a
 type Subst = Map.Map TVar SplTypeR
 
 
 runInfer :: Infer (Subst, SplTypeR) -> Either TypeError Scheme
-runInfer m = case evalState (runExceptT m) initUnique of
+runInfer m = case evalState (runExceptT m) initEnv of
     Left err -> Left err
     Right res -> Right $ closeOver res
 
@@ -97,8 +97,8 @@ nullSubst = Map.empty
 emptyTypeEnv :: TypeEnv
 emptyTypeEnv = TypeEnv Map.empty
 
-initUnique :: Unique
-initUnique = Unique {count = 0}
+initEnv :: SplEnv
+initEnv = SplEnv {count = 0, typeEnv = emptyTypeEnv}
 
 compose :: Subst -> Subst -> Subst
 s1 `compose` s2 = Map.map (apply s1) s2 `Map.union` s1
@@ -145,6 +145,10 @@ instance Substitutable a => Substitutable [a] where
 instance Substitutable TypeEnv where
     apply s (TypeEnv env) = TypeEnv $ Map.map (apply s) env
     ftv (TypeEnv env) = ftv $ Map.elems env
+
+instance Substitutable SplEnv where
+    apply sub env = env{typeEnv = apply sub $ typeEnv env}
+    ftv env = ftv $ typeEnv env
 
 -- ["α", "β", ..., "ω", "αα", ... ]
 letters :: [String]
@@ -215,45 +219,51 @@ returnSimple s x = return (s, SplSimple x)
 
 unsimple :: MonadError TypeError m => (s1, SplTypeR) -> m (s1, SplSimpleTypeR)
 unsimple (s1, SplSimple s) = return (s1, s)
-unsimple (s, t) = throwError $ UnexpectedFunction t
+unsimple (_, t) = throwError $ UnexpectedFunction t
 
 class Inferer a where
-    infer :: TypeEnv -> a -> Infer (Subst, SplTypeR)
+    infer :: a -> Infer (Subst, SplTypeR)
 
-lookupEnv :: TypeEnv -> (TypeKind, Name) -> Infer (Subst, SplTypeR)
-lookupEnv (TypeEnv env) x = do
+lookupEnv :: (TypeKind, Name) -> Infer (Subst, SplTypeR)
+lookupEnv x = do
+  (TypeEnv env) <- gets typeEnv
   case Map.lookup x env of
     Nothing -> throwError $ UnboundVariable (show x)
     Just s  -> do t <- instantiate s
                   return (nullSubst, t)
 
 instance Inferer SplType where
-    infer _ (SplType a) = returnSimple nullSubst (SplTypeConst a)
-    infer env (SplTypeList a) = do
-        (s1, t1) <- infer env a >>= unsimple
+    infer (SplType a) = returnSimple nullSubst (SplTypeConst a)
+    infer (SplTypeList a) = do
+        (s1, t1) <- infer a >>= unsimple
         returnSimple s1 (SplTypeListR t1)
-    infer env (SplTypeTuple l r) = do
-        (s1, t1) <- infer env l >>= unsimple
-        let env' = apply s1 env
-        (s2, t2) <- infer env' r >>= unsimple
+    infer (SplTypeTuple l r) = do
+        (s1, t1) <- infer l >>= unsimple
+        modify (apply s1)
+        (s2, t2) <- infer r >>= unsimple
         returnSimple (s2 `compose` s1) (SplTypeTupleR t1 t2)
-    infer _ (SplTypeUnknown) = do
+    infer (SplTypeUnknown) = do
         var <- fresh
         returnSimple nullSubst var
-    infer s@(TypeEnv env) (SplTypePlaceholder str) = do
+    infer (SplTypePlaceholder str) = do
+        (TypeEnv env) <- gets typeEnv
         case Map.lookup (TPV, str) env of
             Nothing -> do
                 n <- fresh
                 return (nullSubst, SplSimple n)
             Just (Forall _ t) -> return (nullSubst, t)
 
-
 {-
 instance Inferer SplVarDecl where
     -- <type> <name> = <expr>;
-    infer env (SplVarDecl t name expr) = do
+    infer (SplVarDecl t name expr) = do
         -- get declared type
         (_, t') <- infer env t >>= unsimple
+        (s1, et) <- infer env expr >>= unsimple
+        let env' = apply s env
+        s2 <- unify t' et
+        --do something
+        Map.insert env name (apply s2 t')
 
         -- Check expr
         -- unify with t'
