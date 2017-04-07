@@ -271,6 +271,37 @@ instance Inferer SplVarDecl where
 
 
 instance Inferer SplExpr where
+    infer (SplIdentifierExpr name SplFieldNone) = do
+        (s, t) <- lookupEnv (Var, name) >>= unsimple
+        returnSimple s t
+
+    infer (SplUnaryExpr op expr) = do
+        (s, e1) <- infer expr >>= unsimple
+        modify $ apply s
+        case op of
+            SplOperatorInvert -> do
+                s' <- unify e1 (SplTypeConst SplBool)
+                returnSimple (s' `compose` s) (apply s' e1)
+            SplOperatorNegate -> do
+                s' <- unify e1 (SplTypeConst SplInt)
+                returnSimple (s' `compose` s) (apply s' e1)
+
+    infer (SplBinaryExpr _ _ _) = error "not yet implemented"
+
+    infer (SplIntLiteralExpr _) = returnSimple nullSubst (SplTypeConst SplInt)
+    infer (SplCharLiteralExpr _) = returnSimple nullSubst (SplTypeConst SplChar)
+    infer (SplBooleanLiteralExpr _) = returnSimple nullSubst (SplTypeConst SplBool)
+
+    infer (SplEmptyListExpr) = do
+        n <- fresh
+        returnSimple nullSubst n
+
+    infer (SplTupleExpr l r) = do
+        (sl, tl) <- infer l >>= unsimple
+        modify $ apply sl
+        (sr, tr) <- infer r >>= unsimple
+        returnSimple (sr `compose` sl) (SplTypeTupleR tl tr)
+
     infer _ = error "nyi"
 
 {-
