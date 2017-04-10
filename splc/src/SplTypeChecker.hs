@@ -366,34 +366,6 @@ instance Inferer SplStmt where
 class SplTypeChecker a where
     typeCheck :: a -> SplTypeCheckResult
 
-unsimple :: SplTypeR -> StateT Environment (Either String) SplSimpleTypeR
-unsimple (SplSimple t) = return t
-unsimple (SplTypeFunction _ _) = fail "Unexpected function type"
-
-returnSimple :: SplSimpleTypeR -> SplTypeCheckResult
-returnSimple x = return (SplSimple x)
-
-disallowVoid :: SplSimpleTypeR -> StateT Environment (Either String) SplSimpleTypeR
-disallowVoid (SplVoid) = fail "Void is not allowed"
-disallowVoid t = return t
-
-notVoid :: SplSimpleTypeR -> Bool
-notVoid SplVoid = False
-notVoid _       = True
-
-instance SplTypeChecker SplType where
-    typeCheck SplTypeUnknown = fail "Not allowed yet"
-    typeCheck (SplTypePlaceholder _) = fail "Not allowed yet"
-    typeCheck (SplTypeTuple l r) = do
-        lt <- typeCheck l >>= unsimple >>= disallowVoid
-        rt <- typeCheck r >>= unsimple >>= disallowVoid
-        returnSimple (SplTypeTupleR lt rt)
-    typeCheck (SplTypeList a) = do
-        at <- typeCheck a >>= unsimple >>= disallowVoid
-        returnSimple (SplTypeListR at)
-    typeCheck (SplType t) = returnSimple $ SplTypeConst t
-
-
 instance SplTypeChecker SplDecl where
     typeCheck (SplDeclVar varDecl) = typeCheck varDecl
 
