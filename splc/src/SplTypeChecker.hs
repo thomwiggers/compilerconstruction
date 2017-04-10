@@ -239,6 +239,16 @@ lookupEnv x = do
     Just s  -> do t <- instantiate s
                   return (nullSubst, t)
 
+instance Inferer Spl where
+    infer (Spl l) = do
+        mapM_ infer l
+        returnSimple nullSubst SplVoid
+
+instance Inferer SplDecl where
+    infer (SplDeclVar d) = infer d
+    infer (SplDeclFun name argNames argTypes retType varDecls stmts) =
+        error "not implemented"
+
 instance Inferer SplType where
     infer (SplType a) = returnSimple nullSubst (SplTypeConst a)
     infer (SplTypeList a) = do
