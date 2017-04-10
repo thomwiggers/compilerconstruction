@@ -335,6 +335,32 @@ instance Inferer SplExpr where
 
     infer _ = error "nyi"
 
+instance Inferer [SplStmt] where
+    infer _ = returnSimple nullSubst SplVoid
+
+instance Inferer SplStmt where
+    infer (SplIfStmt cond thenStmts elseStmts) = do
+        (sc, tc) <- infer cond >>= unsimple
+        modify $ apply sc
+        s1 <- unify tc (SplTypeConst SplBool)
+        modify $ apply s1
+        (st, tt) <- infer thenStmts >>= unsimple
+        modify $ apply sc
+        (se, te) <- infer elseStmts >>= unsimple
+        modify $ apply se
+        s <- unify (apply se tt) te
+        returnSimple (s `compose` se `compose` st `compose` s1 `compose` sc) (apply s tt)
+
+    infer (SplWhileStmt cond stmts) = do
+        (sc, tc) <- infer cond >>= unsimple
+        modify $ apply sc
+        s1 <- unify tc (SplTypeConst SplBool)
+        modify $ apply s1
+        (st, tt) <- infer stmts >>= unsimple
+        returnSimple (st `compose` s1 `compose` sc) tt
+
+    infer (SplReturnStmt expr) = infer expr
+    infer SplReturnVoidStmt = returnSimple nullSubst SplVoid
 {-
 
 class SplTypeChecker a where
