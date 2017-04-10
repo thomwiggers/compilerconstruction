@@ -1,4 +1,3 @@
-{-# LANGUAGE NamedFieldPuns #-}
 module TypeCheckerSpec (spec) where
 
 import Test.Hspec
@@ -32,8 +31,7 @@ spec = do
          - Function eliminates Either from the state, then the lookup may have a Just.
          -}
         updatesStateWith a (n, b) = do
-            let (SplEnv {typeEnv}) = (execInfer . infer) a
-            let (TypeEnv env) = typeEnv
+            let (SplEnv {typeEnv=TypeEnv env}) = (execInfer . infer) a
             (Map.lookup n env) `shouldBe` (Just b)
 
 voidType :: SplTypeR
