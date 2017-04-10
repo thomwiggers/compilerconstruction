@@ -15,7 +15,7 @@ spec = do
             (SplType SplInt) `checksAs` (SplSimple $ SplTypeConst SplInt)
         it "checks tuples of ints" $
             (SplTypeTuple (SplType SplInt) (SplType SplInt))
-                `checksAs` 
+                `checksAs`
                  (SplSimple (SplTypeTupleR (SplTypeConst SplInt) (SplTypeConst SplInt)))
     describe "Variable Declarations" $ do
         it "checks as Int" $
@@ -31,6 +31,25 @@ spec = do
                 "var n = '🎉';" `parseChecksAs` voidType
             it "updates the state correctly" $
                 "var n = '🎉';" `parseUpdatesStateWith` ((Var, "n"), Forall [] (SplSimple $ SplTypeConst SplChar))
+    describe "if statements" $ do
+        it "checks correctly" $
+            (SplIfStmt (SplBooleanLiteralExpr True) [] []) `checksAs` voidType
+        describe "handle a return statement correctly" $ do
+            it "return void" $
+                (SplIfStmt (SplBooleanLiteralExpr True) [SplReturnVoidStmt] []) `checksAs` voidType
+            -- FIXME
+            it "return 42" $
+                (SplIfStmt (SplBooleanLiteralExpr True) [SplReturnStmt (SplIntLiteralExpr 42)] []) `checksAs` (SplSimple $ SplTypeConst SplInt)
+        describe "multiple return statements" $ do
+            it "return void" $
+                (SplIfStmt (SplBooleanLiteralExpr True) [SplReturnVoidStmt] [SplReturnVoidStmt]) `checksAs` voidType
+            it "return 42; return 42" $
+                (SplIfStmt (SplBooleanLiteralExpr True) [SplReturnStmt (SplIntLiteralExpr 42)] [SplReturnStmt (SplIntLiteralExpr 42)]) `checksAs` (SplSimple $ SplTypeConst SplInt)
+            -- fixme
+            xit "return void, return 42" $
+                (SplIfStmt (SplBooleanLiteralExpr True) [SplReturnVoidStmt] [SplReturnStmt $ SplIntLiteralExpr 42]) `failsWith` (UnificationFail voidType (SplSimple $ SplTypeConst SplInt))
+            it "return 'c'; return 42" $
+                (SplIfStmt (SplBooleanLiteralExpr True) [SplReturnStmt $ SplCharLiteralExpr 'c'] [SplReturnStmt $ SplIntLiteralExpr 42]) `failsWith` (UnificationFail (SplSimple $ SplTypeConst SplChar) (SplSimple $ SplTypeConst SplInt))
     where
         checksAs a b = (runInfer . infer) a `shouldBe` (Right (Forall [] b))
         failsWith a e = (runInfer . infer) a `shouldBe` (Left e)

@@ -196,6 +196,7 @@ instance Unify SplTypeR where
 
 instance Unify SplSimpleTypeR where
     unify (SplTypeConst a) (SplTypeConst b) | a == b = return nullSubst
+    unify SplVoid SplVoid = return nullSubst
     unify (SplTypeVar a) t = bind a t
     unify t (SplTypeVar a) = bind a t
     unify (SplTypeTupleR l r) (SplTypeTupleR l' r') = do
@@ -336,7 +337,9 @@ instance Inferer SplExpr where
     infer _ = error "nyi"
 
 instance Inferer [SplStmt] where
-    infer _ = returnSimple nullSubst SplVoid
+    infer [] = returnSimple nullSubst SplVoid
+    infer [x] = infer x
+    --infer _ = returnSimple nullSubst SplVoid
 
 instance Inferer SplStmt where
     infer (SplIfStmt cond thenStmts elseStmts) = do
@@ -348,8 +351,14 @@ instance Inferer SplStmt where
         modify $ apply sc
         (se, te) <- infer elseStmts >>= unsimple
         modify $ apply se
-        s <- unify (apply se tt) te
-        returnSimple (s `compose` se `compose` st `compose` s1 `compose` sc) (apply s tt)
+        let ret = returnSimple (se `compose` st `compose` s1 `compose` sc)
+        case tt of
+            SplVoid -> ret te
+            _ -> case te of
+                SplVoid -> ret tt
+                _ -> do
+                    s <- unify tt te
+                    returnSimple (s `compose` se `compose` st `compose` s1 `compose` sc) (apply s tt)
 
     infer (SplWhileStmt cond stmts) = do
         (sc, tc) <- infer cond >>= unsimple
