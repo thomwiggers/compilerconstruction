@@ -33,6 +33,7 @@ data SplTypeR = SplSimple SplSimpleTypeR
         deriving (Show, Eq)
 
 data Scheme = Forall [TVar] SplTypeR
+    deriving (Show, Eq)
 
 data TypeKind
     = TPV -- TypePlaceholderVariable: like a in "a fiets = 1;"
@@ -41,7 +42,7 @@ data TypeKind
 
 -- a map from names to schemes
 newtype TypeEnv = TypeEnv (Map.Map (TypeKind, Name) Scheme)
-    deriving Monoid
+    deriving (Monoid, Show)
 
 data TypeError
     = UnificationFail SplTypeR SplTypeR
@@ -49,8 +50,10 @@ data TypeError
     | UnboundVariable Name
     | UnexpectedFunction SplTypeR
     | UnexpectedVoid
+    deriving (Show, Eq)
 
 data SplEnv = SplEnv { count :: Int, typeEnv :: TypeEnv }
+    deriving Show
 
 type Infer a = ExceptT TypeError (State SplEnv) a
 type Subst = Map.Map TVar SplTypeR
@@ -60,6 +63,10 @@ runInfer :: Infer (Subst, SplTypeR) -> Either TypeError Scheme
 runInfer m = case evalState (runExceptT m) initEnv of
     Left err -> Left err
     Right res -> Right $ closeOver res
+
+--execInfer :: Infer (Subst, SplTypeR) -> Either TypeError SplEnv
+execInfer :: Infer (Subst, SplTypeR) -> SplEnv
+execInfer m = execState (runExceptT m) initEnv
 
 closeOver :: (Map.Map TVar SplTypeR, SplTypeR) -> Scheme
 closeOver (sub, ty) = normalize sc
@@ -293,7 +300,7 @@ instance Inferer SplExpr where
             SplOperatorMultiply -> binaryIntOp
             SplOperatorDivide -> binaryIntOp
             SplOperatorModulus -> binaryIntOp
-
+            -- TODO
         where
             binaryIntOp = do
                 (sl, tl) <- infer l >>= unsimple
@@ -301,8 +308,6 @@ instance Inferer SplExpr where
                 sl' <- unify tl $ SplTypeConst SplInt
                 sr' <- unify tr $ SplTypeConst SplInt
                 returnSimple (sr' `compose` sl' `compose` sl `compose` sr `compose` sl) $ SplTypeConst SplInt
-
-
 
     infer (SplIntLiteralExpr _) = returnSimple nullSubst (SplTypeConst SplInt)
     infer (SplCharLiteralExpr _) = returnSimple nullSubst (SplTypeConst SplChar)

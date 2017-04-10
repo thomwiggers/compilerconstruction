@@ -57,6 +57,7 @@ test-suite tests
                       megaparsec == 5.2.*,
                       containers,
                       transformers,
+                      mtl,
                       hspec-megaparsec == 0.3.*,
                       pretty == 1.1.*,
                       splc
