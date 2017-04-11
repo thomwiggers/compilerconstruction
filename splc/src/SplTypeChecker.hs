@@ -176,6 +176,7 @@ occursCheck a t = a `Set.member` ftv t
 class Unify a where
     unify :: a -> a -> Infer Subst
 
+
 instance Unify SplTypeR where
     unify (SplSimple t) (SplSimple t') = unify t t'
     unify (SplTypeFunction argTypes retType) (SplTypeFunction argTypes' retType') = do
@@ -193,6 +194,7 @@ instance Unify SplTypeR where
             recApply _ _ _ = fail "Unequal number of arguments"
 
     unify t1 t2 = throwError $ UnificationFail t1 t2
+
 
 instance Unify SplSimpleTypeR where
     unify (SplTypeConst a) (SplTypeConst b) | a == b = return nullSubst
@@ -245,10 +247,12 @@ instance Inferer Spl where
         mapM_ infer l
         returnSimple nullSubst SplVoid
 
+
 instance Inferer SplDecl where
     infer (SplDeclVar d) = infer d
     infer (SplDeclFun name argNames argTypes retType varDecls stmts) =
         error "not implemented"
+
 
 instance Inferer SplType where
     infer (SplType a) = returnSimple nullSubst (SplTypeConst a)
