@@ -45,8 +45,7 @@ spec = do
                 (SplIfStmt (SplBooleanLiteralExpr True) [SplReturnVoidStmt] [SplReturnVoidStmt]) `checksAs` voidType
             it "return 42; return 42" $
                 (SplIfStmt (SplBooleanLiteralExpr True) [SplReturnStmt (SplIntLiteralExpr 42)] [SplReturnStmt (SplIntLiteralExpr 42)]) `checksAs` (SplSimple $ SplTypeConst SplInt)
-            -- fixme
-            xit "return void, return 42" $
+            it "if (True) {return;} else {return 42;}" $
                 (SplIfStmt (SplBooleanLiteralExpr True) [SplReturnVoidStmt] [SplReturnStmt $ SplIntLiteralExpr 42]) `failsWith` (UnificationFail voidType (SplSimple $ SplTypeConst SplInt))
             it "return 'c'; return 42" $
                 (SplIfStmt (SplBooleanLiteralExpr True) [SplReturnStmt $ SplCharLiteralExpr 'c'] [SplReturnStmt $ SplIntLiteralExpr 42]) `failsWith` (UnificationFail (SplSimple $ SplTypeConst SplChar) (SplSimple $ SplTypeConst SplInt))

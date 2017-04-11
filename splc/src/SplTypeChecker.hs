@@ -334,12 +334,29 @@ instance Inferer SplExpr where
         (sr, tr) <- infer r >>= unsimple
         returnSimple (sr `compose` sl) (SplTypeTupleR tl tr)
 
-    infer _ = error "nyi"
 
 instance Inferer [SplStmt] where
-    infer [] = returnSimple nullSubst SplVoid
-    infer [x] = infer x
-    --infer _ = returnSimple nullSubst SplVoid
+    infer l = do
+        -- fixme: handle remaining statements
+        let returns = filter isReturnStmt l
+        inferList returns
+        where
+            isReturnStmt :: SplStmt -> Bool
+            isReturnStmt (SplReturnStmt _) = True
+            isReturnStmt SplReturnVoidStmt = True
+            isReturnStmt _ = False
+
+            inferList :: [SplStmt] -> Infer (Subst, SplTypeR)
+            inferList [] = returnSimple nullSubst SplVoid
+            inferList [x] = infer x
+            inferList (x:xs) = do
+                (sx, tx) <- infer x >>= unsimple
+                modify $ apply sx
+                (sx', tx') <- inferList xs >>= unsimple
+                modify $ apply sx'
+                sr <- unify (apply sx' tx) tx'
+                returnSimple (sr `compose` sx' `compose` sx) (apply sr tx)
+
 
 instance Inferer SplStmt where
     infer (SplIfStmt cond thenStmts elseStmts) = do
@@ -347,18 +364,8 @@ instance Inferer SplStmt where
         modify $ apply sc
         s1 <- unify tc (SplTypeConst SplBool)
         modify $ apply s1
-        (st, tt) <- infer thenStmts >>= unsimple
-        modify $ apply sc
-        (se, te) <- infer elseStmts >>= unsimple
-        modify $ apply se
-        let ret = returnSimple (se `compose` st `compose` s1 `compose` sc)
-        case tt of
-            SplVoid -> ret te
-            _ -> case te of
-                SplVoid -> ret tt
-                _ -> do
-                    s <- unify tt te
-                    returnSimple (s `compose` se `compose` st `compose` s1 `compose` sc) (apply s tt)
+        (ss, ts) <- infer (thenStmts ++ elseStmts) >>= unsimple
+        returnSimple (ss `compose` s1 `compose` sc) ts
 
     infer (SplWhileStmt cond stmts) = do
         (sc, tc) <- infer cond >>= unsimple
@@ -368,8 +375,18 @@ instance Inferer SplStmt where
         (st, tt) <- infer stmts >>= unsimple
         returnSimple (st `compose` s1 `compose` sc) tt
 
+    infer (SplAssignmentStmt name SplFieldNone expr) = do
+        (se, te) <- infer expr >>= unsimple
+        modify $ apply se
+        (sn, tn) <- lookupEnv (Var, name) >>= unsimple
+        st <- unify (apply sn te) tn
+        returnSimple (st `compose` sn `compose` se) (apply st tn)
+
+    infer (SplFuncCallStmt _ _) = error "nyi"
+
     infer (SplReturnStmt expr) = infer expr
     infer SplReturnVoidStmt = returnSimple nullSubst SplVoid
+
 {-
 
 class SplTypeChecker a where
