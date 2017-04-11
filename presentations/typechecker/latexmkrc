@@ -1,0 +1,4 @@
+$pdflatex                   = 'pdflatex %O -shell-escape %S';
+$out_dir = '';
+
+# vim: ft=perl syntax=on

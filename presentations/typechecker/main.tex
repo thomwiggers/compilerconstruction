@@ -8,6 +8,10 @@
 \usepackage{graphicx}
 \usepackage{microtype}
 \usepackage{cleveref}
+\usepackage{color}
+\usepackage{minted}
+
+\usemintedstyle{friendly}
 
 \begin{document}
 
@@ -32,16 +36,66 @@
 %   afvangen in ADT en checken
 
 
-\begin{frame}{Type Checking with Haskell}
-    Making use of language features
+\begin{frame}[fragile]{Last time}
+\begin{verbatim}
+fun {
+  var a = 1;
+  a = a + 1;
+}
+\end{verbatim}
+\pause{}
 
-    Monads for state
-
-    Error handling
+\inputminted{Haskell}{ex1.hs}
 \end{frame}
 
-\begin{frame}{Type Inference with Haskell}
+\section{Type Checking}
+\begin{frame}[fragile]{Type Checking}
+    Haskell is much about types and data structures.
     
+    \only<1>{\inputminted{Haskell}{ex2.hs}}
+    \only<2->{\inputminted{Haskell}{ex2b.hs}}
+
+    \only<3->{\inputminted{Haskell}{ex3.hs}}
+
+\end{frame}
+
+\begin{frame}[fragile]{So far\ldots}
+    \begin{itemize}
+        \item Type checking is kind of boring
+        \item But good for figuring out some of the more difficult scenarios
+        \item Type checking requires ugly workarounds for edge cases
+    \end{itemize}
+
+\begin{minted}{Haskell}
+[Int] a = [];
+\end{minted}
+\end{frame}
+
+\begin{frame}{Type Inference}
+    \begin{itemize}[<+->]
+        \item \textbf{Great} starting point: \emph{Write You A Haskell} by Stephen Diehl\footnote{\url{http://dev.stephendiehl.com/fun/index.html}}
+        \item Previous monad + class-based approach works just as well
+            \begin{itemize}
+                \item<1-> With slight alterations
+            \end{itemize}
+        \item Unfortunately, reuse from type checking is otherwise minimal
+        \item Doing type checking first cost precious time
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Restricting Higher-Order Functions}
+    \begin{itemize}
+        \item We didn't want to allow Higher-Order Functions
+        \pause
+        \item Solution: don't allow those to be represented in the types
+    \end{itemize}
+
+    \pause
+    \inputminted{Haskell}{ex4.hs}
+\end{frame}
+
+\begin{frame}{Discussion}
+    \inputminted{clean}{what_does_a_mean.spl}
 \end{frame}
 
 \end{document}
