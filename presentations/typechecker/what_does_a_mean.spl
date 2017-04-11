@@ -1,0 +1,14 @@
+/*
+ * What does this mean for the signature of function f?
+ */
+
+a three = 3;
+
+/*
+ * Int -> Int or
+ * Char -> Char?
+ */
+f(a) :: a -> a {
+    [a] something = 't' : 'h' : 'r' : 'e' : ['e'];
+    return a;
+}
