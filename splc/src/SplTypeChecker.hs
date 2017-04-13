@@ -46,6 +46,7 @@ newtype TypeEnv = TypeEnv (Map.Map (TypeKind, Name) Scheme)
 
 data TypeError
     = UnificationFail SplTypeR SplTypeR
+    | UnificationFail3 SplTypeR SplTypeR SplTypeR
     | InfiniteType TVar SplTypeR
     | UnboundVariable Name
     | UnexpectedFunction SplTypeR
@@ -311,8 +312,8 @@ instance Inferer SplExpr where
 
     infer (SplBinaryExpr op l r) = do
         case op of
-            SplOperatorAdd -> binaryIntOp  -- fixme: unify chars
-            SplOperatorSubtract -> binaryIntOp  -- fixme: unify chars
+            SplOperatorAdd -> binaryIntOp `catchError` catchBinaryCharOp
+            SplOperatorSubtract -> binaryIntOp  `catchError` catchBinaryCharOp
             SplOperatorMultiply -> binaryIntOp
             SplOperatorDivide -> binaryIntOp
             SplOperatorModulus -> binaryIntOp
@@ -324,6 +325,19 @@ instance Inferer SplExpr where
                 sl' <- unify tl $ SplTypeConst SplInt
                 sr' <- unify tr $ SplTypeConst SplInt
                 returnSimple (sr' `compose` sl' `compose` sr `compose` sl) $ SplTypeConst SplInt
+
+            catchBinaryCharOp (UnificationFail _ c) = do
+                (sl, tl) <- infer l >>= unsimple
+                (sr, tr) <- infer r >>= unsimple
+                sl' <- (unify tl $ SplTypeConst SplChar) `catchError` catchCharUnify c
+                sr' <- (unify tr $ SplTypeConst SplChar) `catchError` catchCharUnify c
+                returnSimple (sr' `compose` sl' `compose` sr `compose` sl) $ SplTypeConst SplChar
+            catchBinaryCharOp e = throwError e
+
+            catchCharUnify c (UnificationFail a b) = throwError $ UnificationFail3 a b c
+            catchCharUnify _ e = throwError e
+
+
 
     infer (SplIntLiteralExpr _) = returnSimple nullSubst (SplTypeConst SplInt)
     infer (SplCharLiteralExpr _) = returnSimple nullSubst (SplTypeConst SplChar)
