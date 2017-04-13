@@ -52,7 +52,7 @@ data TypeError
     | UnexpectedVoid
     deriving (Show, Eq)
 
-data SplEnv = SplEnv { count :: Int, typeEnv :: TypeEnv }
+data SplEnv = SplEnv { nextFreshVar :: Int, typeEnv :: TypeEnv, returnBlocks :: [Bool], returnType :: SplSimpleTypeR }
     deriving Show
 
 type Infer a = ExceptT TypeError (State SplEnv) a
@@ -105,7 +105,7 @@ emptyTypeEnv :: TypeEnv
 emptyTypeEnv = TypeEnv Map.empty
 
 initEnv :: SplEnv
-initEnv = SplEnv {count = 0, typeEnv = emptyTypeEnv}
+initEnv = SplEnv {nextFreshVar = 0, typeEnv = emptyTypeEnv, returnBlocks = [], returnType = undefined}
 
 compose :: Subst -> Subst -> Subst
 s1 `compose` s2 = Map.map (apply s1) s2 `Map.union` s1
@@ -165,8 +165,8 @@ letters = [1..] >>= flip replicateM ['α' .. 'ω']
 fresh :: Infer SplSimpleTypeR
 fresh = do
     s <- get
-    put s{count = count s + 1}
-    return $ SplTypeVar $ TV (letters !! count s)
+    put s{nextFreshVar = nextFreshVar s + 1}
+    return $ SplTypeVar $ TV (letters !! nextFreshVar s)
 
 -- Check if a type variable exists before we try to replace it
 occursCheck :: Substitutable a => TVar -> a -> Bool
@@ -322,7 +322,7 @@ instance Inferer SplExpr where
                 (sr, tr) <- infer r >>= unsimple
                 sl' <- unify tl $ SplTypeConst SplInt
                 sr' <- unify tr $ SplTypeConst SplInt
-                returnSimple (sr' `compose` sl' `compose` sl `compose` sr `compose` sl) $ SplTypeConst SplInt
+                returnSimple (sr' `compose` sl' `compose` sr `compose` sl) $ SplTypeConst SplInt
 
     infer (SplIntLiteralExpr _) = returnSimple nullSubst (SplTypeConst SplInt)
     infer (SplCharLiteralExpr _) = returnSimple nullSubst (SplTypeConst SplChar)
@@ -340,36 +340,46 @@ instance Inferer SplExpr where
 
 
 instance Inferer [SplStmt] where
-    infer l = do
-        -- fixme: handle remaining statements
-        let returns = filter isReturnStmt l
-        inferList returns
-        where
-            isReturnStmt :: SplStmt -> Bool
-            isReturnStmt (SplReturnStmt _) = True
-            isReturnStmt SplReturnVoidStmt = True
-            isReturnStmt _ = False
+    infer stmts = do
+        -- push False for the return of this Block.
+        -- Any return statements in the block will change the value to True
+        env <- get
+        put $ env{returnBlocks = (False : returnBlocks env)}
 
-            inferList :: [SplStmt] -> Infer (Subst, SplTypeR)
-            inferList [] = returnSimple nullSubst SplVoid
-            inferList [x] = infer x
-            inferList (x:xs) = do
-                (sx, tx) <- infer x >>= unsimple
-                modify $ apply sx
-                (sx', tx') <- inferList xs >>= unsimple
-                modify $ apply sx'
-                sr <- unify (apply sx' tx) tx'
-                returnSimple (sr `compose` sx' `compose` sx) (apply sr tx)
+        inferStmts stmts
+        where
+            inferStmts :: [SplStmt] -> Infer (Subst, SplTypeR)
+            inferStmts [] = returnSimple nullSubst SplVoid
+            inferStmts (x:xs) = do
+                (st, _) <- infer x
+                modify $ apply st
+                (sr, _) <- inferStmts xs
+                returnSimple (st `compose` sr) SplVoid
 
 
 instance Inferer SplStmt where
     infer (SplIfStmt cond thenStmts elseStmts) = do
+        -- condition
         (sc, tc) <- infer cond >>= unsimple
         modify $ apply sc
         s1 <- unify tc (SplTypeConst SplBool)
         modify $ apply s1
-        (ss, ts) <- infer (thenStmts ++ elseStmts) >>= unsimple
-        returnSimple (ss `compose` s1 `compose` sc) ts
+
+        -- then
+        (st, _) <- infer thenStmts >>= unsimple
+        modify $ apply st
+
+        -- else
+        (se, te) <- infer elseStmts >>= unsimple
+        rets <- gets returnBlocks
+        let (elseHasReturn : thenHasReturn : curBlockHasReturn : restReturns) = rets
+
+        -- update environment
+        let curBlockHasReturn' = curBlockHasReturn || thenHasReturn && elseHasReturn
+        env <- get
+        put env{returnBlocks = (curBlockHasReturn' : restReturns)}
+
+        returnSimple (st `compose` se `compose` s1 `compose` sc) te
 
     infer (SplWhileStmt cond stmts) = do
         (sc, tc) <- infer cond >>= unsimple
@@ -377,6 +387,12 @@ instance Inferer SplStmt where
         s1 <- unify tc (SplTypeConst SplBool)
         modify $ apply s1
         (st, tt) <- infer stmts >>= unsimple
+
+        -- update return state: drop return from while because it may not be executed
+        (_, restReturns) <- gets ((splitAt 1) . returnBlocks)
+        env <- get
+        put $ env{returnBlocks = restReturns}
+
         returnSimple (st `compose` s1 `compose` sc) tt
 
     infer (SplAssignmentStmt name SplFieldNone expr) = do
@@ -388,8 +404,40 @@ instance Inferer SplStmt where
 
     infer (SplFuncCallStmt _ _) = error "nyi"
 
-    infer (SplReturnStmt expr) = infer expr
-    infer SplReturnVoidStmt = returnSimple nullSubst SplVoid
+    -- todo unify
+    infer (SplReturnStmt expr) = do
+        env <- get
+        let (_, restReturns) = ((splitAt 1) . returnBlocks) env
+
+        -- infer expression and apply subst to state
+        (s, t) <- infer expr >>= unsimple
+        modify $ apply s
+
+        -- unify return type with expected return type
+        let retType = apply s $ returnType env
+        s' <- unify t retType
+        let retType' = apply s' retType
+
+        -- update state
+        put $ env{returnType = retType', returnBlocks = (True : restReturns)}
+
+        returnSimple (s' `compose` s) retType'
+
+
+    infer SplReturnVoidStmt = do
+        env <- get
+        let (_, restReturns) = ((splitAt 1) . returnBlocks) env
+
+        -- unify return type with expected return type
+        let retType = returnType env
+        s <- unify SplVoid retType
+        let retType' = apply s retType
+
+        -- update state
+        put $ env{returnType = retType', returnBlocks = (True : restReturns)}
+
+        returnSimple s SplVoid
+
 
 {-
 
