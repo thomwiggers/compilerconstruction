@@ -293,9 +293,10 @@ instance Inferer SplVarDecl where
 
 
 instance Inferer SplExpr where
-    infer (SplIdentifierExpr name SplFieldNone) = do
+    infer (SplIdentifierExpr name field) = do
         (s, t) <- lookupEnv (Var, name) >>= unsimple
-        returnSimple s t
+        (_, tf) <- inferField (apply s t) field
+        returnSimple s tf
 
     infer (SplUnaryExpr op expr) = do
         (s, e1) <- infer expr >>= unsimple
@@ -395,12 +396,13 @@ instance Inferer SplStmt where
 
         returnSimple (st `compose` s1 `compose` sc) tt
 
-    infer (SplAssignmentStmt name SplFieldNone expr) = do
+    infer (SplAssignmentStmt name field expr) = do
         (se, te) <- infer expr >>= unsimple
         modify $ apply se
         (sn, tn) <- lookupEnv (Var, name) >>= unsimple
         st <- unify (apply sn te) tn
-        returnSimple (st `compose` sn `compose` se) (apply st tn)
+        (_, tf) <- inferField (apply st tn) field
+        returnSimple (st `compose` sn `compose` se) tf
 
     infer (SplFuncCallStmt _ _) = error "nyi"
 
@@ -439,8 +441,35 @@ instance Inferer SplStmt where
         returnSimple s SplVoid
 
 
-{-
+inferField :: SplSimpleTypeR -> SplField -> Infer (Subst, SplSimpleTypeR)
+inferField parentType SplFieldNone = return (nullSubst, parentType)
+inferField parentType (SplFieldHd f) = do
+    n <- fresh
+    s <- unify (SplTypeListR n) parentType
+    modify $ apply s
+    inferField (apply s n) f
 
+inferField parentType (SplFieldTl f) = do
+    n <- fresh
+    s <- unify (SplTypeListR n) parentType
+    modify $ apply s
+    inferField (apply s parentType) f
+
+inferField parentType (SplFieldFst f) = do
+    n <- fresh
+    m <- fresh
+    s <- unify (SplTypeTupleR n m) parentType
+    modify $ apply s
+    inferField (apply s n) f
+
+inferField parentType (SplFieldSnd f) = do
+    n <- fresh
+    m <- fresh
+    s <- unify (SplTypeTupleR n m) parentType
+    modify $ apply s
+    inferField (apply s m) f
+
+{-
 class SplTypeChecker a where
     typeCheck :: a -> SplTypeCheckResult
 
@@ -479,48 +508,6 @@ instance SplTypeChecker SplDecl where
         put (Map.insert name functionType globalState)
 
         return functionType
-
-
-instance SplTypeChecker SplVarDecl where
-    typeCheck (SplVarDecl varType name expr) = do
-        t <- typeCheck varType
-        e <- typeCheck expr
-        _ <- unsimple e >>= disallowVoid
-        if (t == e)
-            then (do
-                declared <- gets (Map.member name)
-                when declared
-                    (fail $ "Variable " ++ name ++ " already declared")
-                modify (Map.insert name t)
-                return t
-            )
-            else fail "Type mismatch when parsing varDecl"
-
-typeCheckField :: SplSimpleTypeR -> SplField -> SplTypeCheckResult
-typeCheckField t SplFieldNone = returnSimple t
-typeCheckField (SplTypeListR t) (SplFieldHd f) = typeCheckField t f
-typeCheckField t@(SplTypeListR _) (SplFieldTl f) = typeCheckField t f
-typeCheckField (SplTypeTupleR l _) (SplFieldFst f) = typeCheckField l f
-typeCheckField (SplTypeTupleR _ r) (SplFieldSnd f) = typeCheckField r f
-typeCheckField _ (SplFieldHd _) = fail "Cannot take hd of a non-list"
-typeCheckField _ (SplFieldTl _) = fail "Cannot take tl of a non-list"
-typeCheckField _ (SplFieldFst _) = fail "Cannot take fst of a non-tuple"
-typeCheckField _ (SplFieldSnd _) = fail "Cannot take snd of a non-tuple"
-
-instance SplTypeChecker [SplStmt] where
-    typeCheck [] = returnSimple SplVoid
-    typeCheck (x:xs) = do
-        xType <- typeCheck x >>= unsimple
-        xsType <- typeCheck xs >>= unsimple
-        case xType of
-            SplVoid -> returnSimple xsType
-            t1 -> case xsType of
-                    SplVoid -> returnSimple xType
-                    t2 -> if (t1 == t2)
-                        then returnSimple t1
-                        else fail $ "Different return types: " ++
-                            (show t1) ++ " and " ++ (show t2) ++ "."
-
 
 instance SplTypeChecker SplStmt where
     typeCheck (SplIfStmt cond thenStmts elseStmts) = do
