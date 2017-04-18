@@ -48,6 +48,7 @@ data TypeError
     = UnificationFail SplTypeR SplTypeR
     | UnificationFail3 SplTypeR SplTypeR SplTypeR
     | InfiniteType TVar SplTypeR
+    | ConflictingDeclaration Name
     | UnboundVariable Name
     | UnexpectedFunction SplTypeR
     | UnexpectedVoid
@@ -251,9 +252,62 @@ instance Inferer Spl where
 
 instance Inferer SplDecl where
     infer (SplDeclVar d) = infer d
-    infer (SplDeclFun name argNames argTypes retType varDecls stmts) =
-        error "not implemented"
+    infer (SplDeclFun name argNames argTypes retType varDecls stmts) = do
+        -- check if name exists
+        (TypeEnv env) <- gets typeEnv
+        let funExists = Map.member (Var, name) env
+        when (funExists) (throwError $ ConflictingDeclaration name)
 
+        -- copy state for scope resolution
+        globalState <- get
+
+        -- Assign arguments with their types
+        nameTypes <- if (null argTypes)
+                        then do
+                            argTypes' <- replicateM (length argNames) fresh
+                            return $ zip argNames argTypes'
+                        else do
+                            -- we argue that substitutions on types in the function params don't matter at this point
+                            argTypes' <- mapM (\x -> infer x >>= unsimple >>= \(_, y) -> return y) argTypes
+                            return $ zip argNames argTypes'
+
+        -- insert all arguments into the local environment
+        -- fixme check if forall t -> t is needed
+        let localEnv = foldr (\(n, t) -> Map.insert (Var, n) (Forall [] (SplSimple t))) env nameTypes
+
+        -- set up expected return value
+        (_, retType') <- infer retType >>= unsimple
+
+        -- prepare local env, push false on return stack, set expected return type
+        let localState = globalState{typeEnv = TypeEnv localEnv, returnBlocks = [False], returnType = retType' }
+        put localState
+
+        -- check var decls
+        -- note that substitutions are applied by varDecl's infer, if that changes: fix
+        subVars <- mapM infer varDecls >>= \list -> return $ foldl (\s2 (s, _)-> s `compose` s2) nullSubst list
+
+        -- check stmts
+        -- fixme what to do about s
+        (s, _) <- infer stmts
+
+        -- pop bool from return stack, if False, check if retType is Void
+        [hasReturn] <- gets returnBlocks
+        when (not hasReturn && retType' /= SplVoid) (
+            throwError $ UnificationFail (SplSimple SplVoid) (SplSimple retType'))
+
+        -- reset scoping from copied state
+        put globalState
+
+        -- apply substitutions
+        modify $ apply (s `compose` subVars)
+
+        -- insert function declaration into state
+        let argTypes' = snd $ unzip nameTypes
+        modify $ extend ((Var, name), apply (s `compose` subVars) (Forall (Set.toList $ ftv argTypes') (SplTypeFunction argTypes' retType')))
+
+        -- return type scheme
+
+        returnSimple nullSubst SplVoid
 
 instance Inferer SplType where
     infer (SplType a) = returnSimple nullSubst (SplTypeConst a)
@@ -276,6 +330,11 @@ instance Inferer SplType where
                 modify (extend ((TPV, str), Forall [] n))
                 return (nullSubst, n)
             Just (Forall _ t) -> return (nullSubst, t)
+
+
+instance Inferer SplRetType where
+    infer (SplRetType t) = infer t
+    infer SplRetVoid = returnSimple nullSubst SplVoid
 
 
 instance Inferer SplVarDecl where
