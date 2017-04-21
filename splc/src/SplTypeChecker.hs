@@ -372,27 +372,45 @@ instance Inferer SplExpr where
 
     infer (SplBinaryExpr op l r) = do
         case op of
-            SplOperatorAdd -> binaryIntOp `catchError` catchBinaryCharOp
-            SplOperatorSubtract -> binaryIntOp  `catchError` catchBinaryCharOp
-            SplOperatorMultiply -> binaryIntOp
-            SplOperatorDivide -> binaryIntOp
-            SplOperatorModulus -> binaryIntOp
-            -- TODO
-        where
-            binaryIntOp = do
+            SplOperatorAdd -> (binaryOp SplInt SplInt) `catchError` (catchBinaryCharOp SplChar)
+            SplOperatorSubtract -> (binaryOp SplInt SplInt) `catchError` (catchBinaryCharOp SplChar)
+            SplOperatorMultiply -> binaryOp SplInt SplInt
+            SplOperatorDivide -> binaryOp SplInt SplInt
+            SplOperatorModulus -> binaryOp SplInt SplInt
+            SplOperatorLess -> binaryOp SplInt SplBool `catchError` (catchBinaryCharOp SplBool)
+            SplOperatorLessEqual -> binaryOp SplInt SplBool `catchError` (catchBinaryCharOp SplBool)
+            SplOperatorEqual -> binarySameArgTypeToBool
+            SplOperatorGreaterEqual -> binaryOp SplInt SplBool `catchError` (catchBinaryCharOp SplBool)
+            SplOperatorGreater -> binaryOp SplInt SplBool `catchError` (catchBinaryCharOp SplBool)
+            SplOperatorNotEqual -> binarySameArgTypeToBool
+            SplOperatorAnd -> binaryOp SplBool SplBool
+            SplOperatorOr -> binaryOp SplBool SplBool
+            SplOperatorCons -> do
                 (sl, tl) <- infer l >>= unsimple
                 (sr, tr) <- infer r >>= unsimple
-                sl' <- unify tl $ SplTypeConst SplInt
-                sr' <- unify tr $ SplTypeConst SplInt
-                returnSimple (sr' `compose` sl' `compose` sr `compose` sl) $ SplTypeConst SplInt
+                s <- unify (apply sr (SplTypeListR tl)) (apply sl tr)
+                returnSimple (s `compose` sr `compose` sl) $ (apply (s `compose` sl) tr)
+        where
+            binarySameArgTypeToBool = do
+                (sl, tl) <- infer l >>= unsimple
+                (sr, tr) <- infer r >>= unsimple
+                s <- unify (apply sr tl) (apply sl tr)
+                returnSimple (s `compose` sr `compose` sl) $ SplTypeConst SplBool
 
-            catchBinaryCharOp (UnificationFail _ c) = do
+            binaryOp argType retType = do
+                (sl, tl) <- infer l >>= unsimple
+                (sr, tr) <- infer r >>= unsimple
+                sl' <- unify tl $ SplTypeConst argType
+                sr' <- unify tr $ SplTypeConst argType
+                returnSimple (sr' `compose` sl' `compose` sr `compose` sl) $ SplTypeConst retType
+
+            catchBinaryCharOp retType (UnificationFail _ c) = do
                 (sl, tl) <- infer l >>= unsimple
                 (sr, tr) <- infer r >>= unsimple
                 sl' <- (unify tl $ SplTypeConst SplChar) `catchError` catchCharUnify c
                 sr' <- (unify tr $ SplTypeConst SplChar) `catchError` catchCharUnify c
-                returnSimple (sr' `compose` sl' `compose` sr `compose` sl) $ SplTypeConst SplChar
-            catchBinaryCharOp e = throwError e
+                returnSimple (sr' `compose` sl' `compose` sr `compose` sl) $ SplTypeConst retType
+            catchBinaryCharOp _ e = throwError e
 
             catchCharUnify c (UnificationFail a b) = throwError $ UnificationFail3 a b c
             catchCharUnify _ e = throwError e
