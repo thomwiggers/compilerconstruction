@@ -303,11 +303,12 @@ instance Inferer SplDecl where
 
         -- insert function declaration into state
         let argTypes' = snd $ unzip nameTypes
-        modify $ extend ((Var, name), apply (s `compose` subVars) (Forall (Set.toList $ ftv argTypes') (SplTypeFunction argTypes' retType')))
+        let resultType = SplTypeFunction argTypes' retType'
+        modify $ extend ((Var, name), apply (s `compose` subVars) (Forall (Set.toList $ ftv argTypes') resultType))
 
-        -- return type scheme
+        -- return type
+        return ((s `compose` subVars), resultType)
 
-        returnSimple nullSubst SplVoid
 
 instance Inferer SplType where
     infer (SplType a) = returnSimple nullSubst (SplTypeConst a)
