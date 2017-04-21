@@ -415,8 +415,6 @@ instance Inferer SplExpr where
             catchCharUnify c (UnificationFail a b) = throwError $ UnificationFail3 a b c
             catchCharUnify _ e = throwError e
 
-
-
     infer (SplIntLiteralExpr _) = returnSimple nullSubst (SplTypeConst SplInt)
     infer (SplCharLiteralExpr _) = returnSimple nullSubst (SplTypeConst SplChar)
     infer (SplBooleanLiteralExpr _) = returnSimple nullSubst (SplTypeConst SplBool)
@@ -431,6 +429,14 @@ instance Inferer SplExpr where
         (sr, tr) <- infer r >>= unsimple
         returnSimple (sr `compose` sl) (SplTypeTupleR tl tr)
 
+    infer (SplFuncCallExpr name args) = do
+        (_, tn) <- lookupEnv (Var, name)
+        (sargs, targs) <- inferArguments args
+        ret <- fresh
+        s <- unify (apply sargs tn) (SplTypeFunction targs ret)
+
+        let retType = apply s ret
+        returnSimple (s `compose` sargs) retType
 
 instance Inferer [SplStmt] where
     infer stmts = do
@@ -496,7 +502,16 @@ instance Inferer SplStmt where
         (_, tf) <- inferField (apply st tn) field
         returnSimple (st `compose` sn `compose` se) tf
 
-    infer (SplFuncCallStmt _ _) = error "nyi"
+    infer (SplFuncCallStmt name args) = do
+        (_, tn) <- lookupEnv (Var, name)
+        (sargs, targs) <- inferArguments args
+        ret <- fresh
+        s <- unify (apply sargs tn) (SplTypeFunction targs ret)
+
+        let retType = apply s ret
+        -- todo: Warning if not result is discarded, as this is a stmt
+        returnSimple (s `compose` sargs) retType
+        where
 
     -- todo unify
     infer (SplReturnStmt expr) = do
@@ -531,6 +546,14 @@ instance Inferer SplStmt where
         put $ env{returnType = retType', returnBlocks = (True : restReturns)}
 
         returnSimple s SplVoid
+
+
+inferArguments :: (Inferer a) => [a] -> Infer (Subst, [SplSimpleTypeR])
+inferArguments [] = return (nullSubst, [])
+inferArguments (x:xs) = do
+    (s, t) <- infer x >>= unsimple
+    (s', t') <- inferArguments xs
+    return ((s' `compose` s), t : t')
 
 
 inferField :: SplSimpleTypeR -> SplField -> Infer (Subst, SplSimpleTypeR)
