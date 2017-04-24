@@ -298,8 +298,10 @@ instance Inferer SplDecl where
 
         -- pop bool from return stack, if False, check if retType is Void
         [hasReturn] <- gets returnBlocks
-        when (not hasReturn && retType' /= SplVoid) (
-            throwError $ UnificationFail (SplSimple SplVoid) (SplSimple retType'))
+        _ <- if (not hasReturn)
+            then unify SplVoid retType'
+            else return nullSubst
+
 
         -- reset scoping from copied state
         put globalState
