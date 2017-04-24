@@ -1,0 +1,11 @@
+first (tuple) :: (Int, b) -> Int {
+    return tuple.fst;
+}
+
+transpose (p1,p2) :: (Int, (Int, Int))  (Int, (Int, Int))   -> (Int, (Int, Int)) {
+	return ((p1.fst + p2.fst), (first(p1.snd) + p2.snd.fst, p1.snd.snd + p2.snd.snd));
+}
+
+scale(p, scalar) :: (Int, (Int, Int)) Int -> (Int, (Int, Int)) {
+	return (p.fst * scalar, (p.snd.fst * scalar, p.snd.snd * scalar));
+}
