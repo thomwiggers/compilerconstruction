@@ -8,21 +8,28 @@ import Data.Semigroup ((<>))
 import Text.Megaparsec (runParser, parseErrorPretty)
 import SplParser (spl)
 import SplPrettyPrinter
+import SplTypeChecker (runInfer, infer)
 import System.Exit
 
 data InputSrc = StdInput | Filename String
     deriving (Eq, Show)
 
-data Command = PrettyPrint InputSrc
+data Command
+    = PrettyPrint InputSrc
+    | Analysis InputSrc
     deriving (Eq, Show)
 
 commandParser :: Parser Command
-commandParser = subparser
+commandParser = subparser $
     (command "pretty" (info prettyPrintCommand (progDesc "pretty printer")))
+    <>
+    (command "analysis" (info analysisCommand (progDesc "static analysis and type inference")))
 
 prettyPrintCommand :: Parser Command
 prettyPrintCommand =  PrettyPrint <$> (parseFile <|> parseStdIn)
 
+analysisCommand :: Parser Command
+analysisCommand = Analysis <$> (parseFile <|> parseStdIn)
 
 parseFile :: Parser InputSrc
 parseFile = Filename <$> argument str (
@@ -52,11 +59,37 @@ doPrettyPrint src = do
                     putStrLn (pprint ast)
                     exitSuccess
 
+doAnalysis :: InputSrc -> IO ExitCode
+doAnalysis src = do
+    fileContent <- case src of
+        StdInput -> getContents
+        Filename f -> readFile f
+    let filename = case src of
+            StdInput -> "stdin"
+            Filename f -> f
+
+    let parsed = runParser spl filename fileContent
+
+    case parsed of
+        Left err -> do
+            putStr (parseErrorPretty err)
+            exitFailure
+        Right ast -> do
+            let checked = (runInfer . infer) ast
+            case checked of
+                Left err -> do
+                    putStrLn $ show err
+                    exitFailure
+                Right scheme -> do
+                    putStrLn $ show scheme
+                    exitSuccess
+
 main :: IO ExitCode
 main = do
     opts <- execParser theOpts
     case opts of
         (PrettyPrint src) -> doPrettyPrint src
+        (Analysis src) -> doAnalysis src
     where
         theOpts = info (commandParser <**> helper) $
                fullDesc

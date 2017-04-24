@@ -100,6 +100,8 @@ executable splc
   build-depends:       base >=4.9 && <4.10,
                        megaparsec == 5.2.*,
                        optparse-applicative==0.13.*,
+                       containers == 0.5.*,
+                       mtl == 2.2.*,
                        pretty==1.1.*
 
   -- Directories containing source files.
