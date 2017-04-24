@@ -17,7 +17,7 @@ code=0
 
 set +e
 
-for f in examples/*.spl; do
+for f in examples/syntax_pass/*.spl; do
     echo -en "Checking if pretty-printing $f is parseable \t\t"
     if pretty "$f" | prettyi > /dev/null 2>&1; then
         echo "Success"
@@ -32,7 +32,7 @@ for f in examples/*.spl; do
     fi
 done
 
-for f in examples/fails/*.spl; do
+for f in examples/syntax_fail/*.spl; do
     echo -en "Checking if parsing $f fails: \t\t"
     if ! pretty "$f" > /dev/null 2>&1; then
         echo "Success"
