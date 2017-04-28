@@ -84,7 +84,8 @@ library
   exposed-modules:    SplParser,
                       SplAST,
                       SplTypeChecker,
-                      SplPrettyPrinter
+                      SplPrettyPrinter,
+                      SplIR
 
 executable splc
   -- .hs or .lhs file containing the Main module.
