@@ -515,7 +515,6 @@ instance Inferer SplStmt where
         let retType = apply s ret
         -- todo: Warning if not result is discarded, as this is a stmt
         returnSimple (s `compose` sargs) retType
-        where
 
     -- todo unify
     infer (SplReturnStmt expr) = do
