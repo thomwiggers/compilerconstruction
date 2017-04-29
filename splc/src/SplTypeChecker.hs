@@ -104,7 +104,14 @@ nullSubst :: Subst
 nullSubst = Map.empty
 
 emptyTypeEnv :: TypeEnv
-emptyTypeEnv = TypeEnv Map.empty
+emptyTypeEnv = TypeEnv $ Map.fromList [((Var, "isEmpty"), Forall [TV "isEmptyVar"]
+                                            (SplTypeFunction [SplTypeListR $ SplTypeVar $ TV "isEmptyVar"]
+                                                (SplTypeConst SplBool)
+                                            )
+                                        ),
+                                       ((Var, "print"), Forall [TV "printVar"]
+                                            (SplTypeFunction [SplTypeVar $ TV "printVar"] SplVoid)
+                                       )]
 
 initEnv :: SplEnv
 initEnv = SplEnv {nextFreshVar = 0, typeEnv = emptyTypeEnv, returnBlocks = [], returnType = undefined}
