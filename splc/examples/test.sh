@@ -60,5 +60,18 @@ for f in examples/type_pass/*.spl; do
     fi
 done
 
+for f in examples/type_fail/*.spl; do
+    echo -en "Checking if infering $f fails: \t\t"
+    if ! cabal exec splc -- analysis $f > /dev/null 2>&1; then
+        echo "Success"
+    else
+        code=1
+        echo "Failed"
+        echo "===== output of analysis of $f ====="
+        cabal exec splc -- analysis $f
+        echo "===================================="
+        echo
+    fi
+done
 
 exit $code
