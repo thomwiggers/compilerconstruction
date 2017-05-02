@@ -15,6 +15,8 @@ data SplPseudoRegister
     | List SplPseudoRegister SplPseudoRegister
     -- for tail empty
     | EmptyList
+    -- for stuff on the heap (globals)
+    | HeapValue SplPseudoRegister
     deriving (Show, Eq)
 
 type SplLabel = String
@@ -106,30 +108,57 @@ replaceName from to instruction = case instruction of
     where
     replace x = if (x == from) then to else x
 
-toIR :: SplStmt -> IRState SplIR
-toIR (SplWhileStmt cond loop) = do
-    (condIR, compareRegister) <- exprToIR cond
-    label <- getNextLabel "while"
-    let labelAfter = label ++ "end"
-    loopIR <- mapM toIR loop
-    return $ (SplJumpTarget label : condIR) ++
-            (SplJumpIfNot compareRegister labelAfter : (concat loopIR) ++ [SplJump label])
+class ToIR a where
+    toIR :: a -> IRState SplIR
 
-toIR (SplIfStmt cond thenStmts elseStmts) = do
-    (condIR, compareRegister) <- exprToIR cond
-    elseLabel <- getNextLabel "else"
-    let elseAfterLabel = elseLabel ++ "end"
-    thenIR <- mapM toIR thenStmts
-    elseIR <- mapM toIR elseStmts
-    return $ condIR ++ (SplJumpIfNot compareRegister elseLabel : (concat thenIR ++ [SplJump elseAfterLabel]))
-        ++ (SplJumpTarget elseLabel : concat elseIR) ++ [SplJumpTarget elseAfterLabel]
+instance ToIR SplStmt where
+    toIR (SplWhileStmt cond loop) = do
+        (condIR, compareRegister) <- exprToIR cond
+        label <- getNextLabel "while"
+        let labelAfter = label ++ "end"
+        loopIR <- mapM toIR loop
+        return $ (SplJumpTarget label : condIR) ++
+                (SplJumpIfNot compareRegister labelAfter : (concat loopIR) ++ [SplJump label])
 
-toIR (SplAssignmentStmt name SplFieldNone expr) = do
-    (condIR, resultRegister) <- exprToIR expr
-    let condIR' = map (replaceName resultRegister (Reg name)) condIR
-    return condIR'
+    toIR (SplIfStmt cond thenStmts elseStmts) = do
+        (condIR, compareRegister) <- exprToIR cond
+        elseLabel <- getNextLabel "else"
+        let elseAfterLabel = elseLabel ++ "end"
+        thenIR <- mapM toIR thenStmts
+        elseIR <- mapM toIR elseStmts
+        return $ condIR ++ (SplJumpIfNot compareRegister elseLabel : (concat thenIR ++ [SplJump elseAfterLabel]))
+            ++ (SplJumpTarget elseLabel : concat elseIR) ++ [SplJumpTarget elseAfterLabel]
 
-toIR (SplFuncCallStmt name args) = do
-    argIRsResultRegs <- mapM exprToIR args
-    let (argIRs, resultRegs) = unzip argIRsResultRegs
-    return (concat argIRs ++ [SplCall name resultRegs])
+    toIR (SplAssignmentStmt name SplFieldNone expr) = do
+        (exprIR, resultRegister) <- exprToIR expr
+        let exprIR' = map (replaceName resultRegister (Reg name)) exprIR
+        return exprIR'
+
+    toIR (SplFuncCallStmt name args) = do
+        argIRsResultRegs <- mapM exprToIR args
+        let (argIRs, resultRegs) = unzip argIRsResultRegs
+        return (concat argIRs ++ [SplCall name resultRegs])
+
+instance ToIR Spl where
+    toIR (Spl x) = do
+        z <- mapM toIR x
+        return $ concat z
+
+instance ToIR SplDecl where
+    toIR (SplDeclVar (SplVarDecl _ name expr)) = do
+        (eIR, eReg) <- exprToIR expr
+        return $ eIR ++ [SplMov (HeapValue (Reg name)) eReg]
+
+    toIR (SplDeclFun name argnames _ _ decls stmts) = do
+        declIRs <- mapM toIR decls
+        stmtIRs <- mapM toIR stmts
+        let declIR = concat declIRs
+        let stmtIR = concat stmtIRs
+
+        return $ [SplFunction name (map Reg argnames) (declIR ++ stmtIR)]
+
+instance ToIR SplVarDecl where
+    toIR (SplVarDecl _ name expr) = do
+        (eIR, resultReg) <- exprToIR expr
+        let declIR = map (replaceName resultReg (Reg name)) eIR
+        return declIR
