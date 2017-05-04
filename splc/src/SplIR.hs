@@ -85,6 +85,8 @@ exprToIR (SplCharLiteralExpr i) = do
 exprToIR (SplBooleanLiteralExpr i) = do
     resultRegister <- getNextVar
     return ([SplMovImm resultRegister (SplImmBool i)], resultRegister)
+exprToIR (SplFuncCallExpr "isEmpty" [list]) = do
+    error "isEmpty: not yet implemented"
 exprToIR (SplFuncCallExpr name args) = do
     argIRsResultRegs <- mapM exprToIR args
     let (argIRs, resultRegs) = unzip argIRsResultRegs
