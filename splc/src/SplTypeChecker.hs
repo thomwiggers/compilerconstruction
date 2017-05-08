@@ -513,6 +513,13 @@ instance Inferer SplStmt where
         (_, tf) <- inferField (apply st tn) field
         returnSimple (st `compose` sn `compose` se) tf
 
+{-
+    infer (SplFuncCallStmt "print" [arg]) = do
+        (sarg, targ) <- infer arg
+        s <- unify (SplTypeConst SplInt) targ -- `catchError` handlePrint
+        error "not yet implemented
+-}
+
     infer (SplFuncCallStmt name args) = do
         (_, tn) <- lookupEnv (Var, name)
         (sargs, targs) <- inferArguments args

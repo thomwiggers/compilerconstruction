@@ -2,20 +2,22 @@ module SplIRtoSSM where
 
 import Prelude
 import SplIR
+import qualified Data.Map as Map
+import Control.Monad.Writer
 import Control.Monad.State
 
-newtype Offset = Int
-newtype Size = Int
-newtype Label = String
+type Offset = Int
+type Size = Int
+type Label = String
 
 data Register = PC | SP | MP | HP | RR | R5 | R6 | R7 | PR String
-    derive (Show, Eq)
+    deriving (Show, Eq)
 
 data Syscall
     = PopPrintInt       -- 0
     | PopPrintChar      -- 1
-    -- there are more, but we don't support them. 
-    derive (Show, Eq)
+    -- there are more, but we don't support them.
+    deriving (Show, Eq)
 
 data SSM
     = LDC Int   -- load a constant.
@@ -64,17 +66,43 @@ data SSM
     | BLE Label
     | BGE Label
     | BRA Label     -- branch always
-    | BSR Label     -- branch subroutine
+    | BSR Label     -- branch subroutine, pushes PC
     | BRT Label     -- branch if top of stack is true
     | BRF Label     -- branch if top of stack is False
     | JSR           -- branch based on value on stack
     | RET
     | HALT
     | TRAP Syscall  -- Call system call
-    derive (Show, Eq)
+    | Label Label
+    deriving (Show, Eq)
+
+
+data Scope
+    = Global
+    | Local
 
 
 data SSMState = SSMState {
-        stackPtr :: Int
+        stackPtr :: Int,
+        globalMap :: Map.Map String (Offset, Scope),
+        scopedMap :: Map.Map String (Offset, Scope)
     }
-        
+
+type IRtoSSMState = WriterT [SSM] (State SSMState) ()
+
+out :: SSM -> IRtoSSMState
+out x = tell [x]
+
+toSSM :: SplInstruction -> IRtoSSMState
+toSSM (SplJump label) = out $ BRA label
+toSSM (SplRet label) =
+    -- fetch result register
+    -- push return value in right place
+    -- return?
+    out RET
+toSSM (SplFunction label _ _) = do
+    -- determine call semantics (arguments on stack in order?)
+    -- set scope with the arguments
+    -- clear out room for return value
+    out $ Label label
+    out HALT

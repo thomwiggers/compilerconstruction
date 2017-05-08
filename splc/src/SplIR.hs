@@ -15,8 +15,6 @@ data SplPseudoRegister
     | List SplPseudoRegister SplPseudoRegister
     -- for tail empty
     | EmptyList
-    -- for stuff on the heap (globals)
-    | HeapValue SplPseudoRegister
     deriving (Show, Eq)
 
 type SplLabel = String
@@ -51,14 +49,14 @@ getNextVar :: IRState SplPseudoRegister
 getNextVar = do
     s <- get
     let i = nextVar s
-    put s{nextVar = 1 + (nextVar s)}
+    put s{nextVar = 1 + nextVar s}
     return $ Reg $ "t" ++ show i
 
 getNextLabel :: String -> IRState String
 getNextLabel prefix = do
     s <- get
     let i = nextLabel s
-    put s{nextLabel = 1 + (nextLabel s)}
+    put s{nextLabel = 1 + nextLabel s}
     return $ prefix ++ show i
 
 exprToIR :: SplExpr -> IRState (SplIR, SplPseudoRegister)
@@ -67,14 +65,14 @@ exprToIR (SplBinaryExpr op e1 e2) = do
     (e1IR, e1ResultRegister) <- exprToIR e1
     (e2IR, e2ResultRegister) <- exprToIR e2
     resultRegister <- getNextVar
-    return ((e1IR ++ e2IR ++
-                [SplBinaryOperation op resultRegister e1ResultRegister e2ResultRegister]),
+    return (e1IR ++ e2IR ++
+                [SplBinaryOperation op resultRegister e1ResultRegister e2ResultRegister],
             resultRegister)
 exprToIR (SplUnaryExpr op e1) = do
     (e1IR, e1ResultRegister) <- exprToIR e1
     resultRegister <- getNextVar
-    return ((e1IR ++
-                [SplUnaryOperation op resultRegister e1ResultRegister]),
+    return (e1IR ++
+                [SplUnaryOperation op resultRegister e1ResultRegister],
             resultRegister)
 exprToIR (SplIntLiteralExpr i) = do
     resultRegister <- getNextVar
@@ -85,7 +83,7 @@ exprToIR (SplCharLiteralExpr i) = do
 exprToIR (SplBooleanLiteralExpr i) = do
     resultRegister <- getNextVar
     return ([SplMovImm resultRegister (SplImmBool i)], resultRegister)
-exprToIR (SplFuncCallExpr "isEmpty" [list]) = do
+exprToIR (SplFuncCallExpr "isEmpty" [list]) =
     error "isEmpty: not yet implemented"
 exprToIR (SplFuncCallExpr name args) = do
     argIRsResultRegs <- mapM exprToIR args
@@ -108,7 +106,7 @@ replaceName from to instruction = case instruction of
     SplJumpTarget t -> SplJumpTarget t
     SplJump t -> SplJump t
     where
-    replace x = if (x == from) then to else x
+    replace x = if x == from then to else x
 
 class ToIR a where
     toIR :: a -> IRState SplIR
@@ -120,7 +118,7 @@ instance ToIR SplStmt where
         let labelAfter = label ++ "end"
         loopIR <- mapM toIR loop
         return $ (SplJumpTarget label : condIR) ++
-                (SplJumpIfNot compareRegister labelAfter : (concat loopIR) ++ [SplJump label])
+                (SplJumpIfNot compareRegister labelAfter : concat loopIR ++ [SplJump label])
 
     toIR (SplIfStmt cond thenStmts elseStmts) = do
         (condIR, compareRegister) <- exprToIR cond
@@ -149,7 +147,7 @@ instance ToIR Spl where
 instance ToIR SplDecl where
     toIR (SplDeclVar (SplVarDecl _ name expr)) = do
         (eIR, eReg) <- exprToIR expr
-        return $ eIR ++ [SplMov (HeapValue (Reg name)) eReg]
+        return $ eIR ++ [SplMov (Reg name) eReg]
 
     toIR (SplDeclFun name argnames _ _ decls stmts) = do
         declIRs <- mapM toIR decls
@@ -157,7 +155,7 @@ instance ToIR SplDecl where
         let declIR = concat declIRs
         let stmtIR = concat stmtIRs
 
-        return $ [SplFunction name (map Reg argnames) (declIR ++ stmtIR)]
+        return [SplFunction name (map Reg argnames) (declIR ++ stmtIR)]
 
 instance ToIR SplVarDecl where
     toIR (SplVarDecl _ name expr) = do

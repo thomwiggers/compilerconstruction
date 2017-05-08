@@ -85,7 +85,8 @@ library
                       SplAST,
                       SplTypeChecker,
                       SplPrettyPrinter,
-                      SplIR
+                      SplIR,
+                      SplIRtoSSM
 
 executable splc
   -- .hs or .lhs file containing the Main module.
