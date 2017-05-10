@@ -74,6 +74,10 @@ exprToIR (SplUnaryExpr op e1) = do
     return (e1IR ++
                 [SplUnaryOperation op resultRegister e1ResultRegister],
             resultRegister)
+exprToIR (SplTupleExpr l r) = do
+    (lIR, lResultRegister) <- exprToIR l
+    (rIR, rResultRegister) <- exprToIR r
+    return (lIR ++ rIR, Tuple lResultRegister rResultRegister)
 exprToIR (SplIntLiteralExpr i) = do
     resultRegister <- getNextVar
     return ([SplMovImm resultRegister (SplImmInt i)], resultRegister)
@@ -83,8 +87,6 @@ exprToIR (SplCharLiteralExpr i) = do
 exprToIR (SplBooleanLiteralExpr i) = do
     resultRegister <- getNextVar
     return ([SplMovImm resultRegister (SplImmBool i)], resultRegister)
-exprToIR (SplFuncCallExpr "isEmpty" [list]) =
-    error "isEmpty: not yet implemented"
 exprToIR (SplFuncCallExpr name args) = do
     argIRsResultRegs <- mapM exprToIR args
     let (argIRs, resultRegs) = unzip argIRsResultRegs

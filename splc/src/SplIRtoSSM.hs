@@ -1,28 +1,35 @@
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns -fno-warn-unused-matches #-}
 module SplIRtoSSM where
 
-import Prelude
-import SplIR
-import SplAST (SplBinaryOperator(..), SplUnaryOperator(..))
-import qualified Data.Map as Map
-import Control.Monad.Writer
-import Control.Monad.State
-import Data.Int (Int32)
-import Data.Maybe (fromMaybe)
+import           Control.Monad.State
+import           Control.Monad.Writer
+import           Data.Int             (Int32)
+import qualified Data.Map             as Map
+import           Data.Maybe           (fromMaybe)
+import           Prelude
+import           SplAST               (SplBinaryOperator (..),
+                                       SplUnaryOperator (..))
+import           SplIR
 
-import SplSSM
+import           SplSSM
 
 data Scope
     = Global
     | Local
 
 data SSMState = SSMState {
-        stackPtr :: Int,
+        stackPtr  :: Int,
         globalMap :: Map.Map String (Offset, Scope),
         scopedMap :: Map.Map String (Offset, Scope)
     }
 
 type IRtoSSMState = WriterT [SSM] (State SSMState) ()
+
+sizeOf :: SplPseudoRegister -> Int
+sizeOf (Reg _)     = 1
+sizeOf (Tuple l r) = sizeOf l + sizeOf r
+sizeOf (List _ _)  = 1       -- heap ptr
+sizeOf EmptyList   = 1      -- null ptr
 
 out :: SSM -> IRtoSSMState
 out x = tell [x]
@@ -63,20 +70,20 @@ toSSM (SplBinaryOperation op (Reg rd) (Reg r1) (Reg r2)) = do
     loadFromStack r1
     loadFromStack r2
     case op of
-        SplOperatorAdd -> out ADD
-        SplOperatorSubtract -> out SUB
-        SplOperatorMultiply -> out MUL
-        SplOperatorDivide -> out DIV
-        SplOperatorModulus -> out MOD
-        SplOperatorLess -> out SplSSM.LT
-        SplOperatorLessEqual -> out LE
-        SplOperatorEqual -> out CMP
+        SplOperatorAdd          -> out ADD
+        SplOperatorSubtract     -> out SUB
+        SplOperatorMultiply     -> out MUL
+        SplOperatorDivide       -> out DIV
+        SplOperatorModulus      -> out MOD
+        SplOperatorLess         -> out SplSSM.LT
+        SplOperatorLessEqual    -> out LE
+        SplOperatorEqual        -> out CMP
         SplOperatorGreaterEqual -> out GE
-        SplOperatorGreater -> out SplSSM.GT
-        SplOperatorNotEqual -> out CMP >> out NOT
-        SplOperatorAnd -> out AND
-        SplOperatorOr -> out OR
-        SplOperatorCons -> error "don't know how to handle lists yet"
+        SplOperatorGreater      -> out SplSSM.GT
+        SplOperatorNotEqual     -> out CMP >> out NOT
+        SplOperatorAnd          -> out AND
+        SplOperatorOr           -> out OR
+        SplOperatorCons         -> error "don't know how to handle lists yet"
     decreaseStackPointer -- eat two vars
     decreaseStackPointer
     modify $ pushOnStack rd 1
@@ -88,13 +95,18 @@ toSSM (SplUnaryOperation op (Reg to) (Reg from)) = do
     decreaseStackPointer
     modify $ pushOnStack to 1
 toSSM (SplJump label) = out $ BRA label
-toSSM (SplJumpIf cond label) =
-    -- fetch cond register
+toSSM (SplJumpIf (Reg cond) label) = do
+    out $ Comment $ "jump if " ++ cond
+    loadFromStack cond
     out $ BRT label
-toSSM (SplJumpIfNot cond label) =
-    -- fetch cond register
-    -- push cond register
+    -- brt eats the top element on the stack
+    decreaseStackPointer
+toSSM (SplJumpIfNot (Reg cond) label) = do
+    out $ Comment $ "jump if not " ++ cond
+    loadFromStack cond
     out $ BRF label
+    -- brt eats the top element from the stack
+    decreaseStackPointer
 toSSM (SplJumpTarget label) = out $ Label label
 toSSM (SplRet register) =
     -- fetch result register
@@ -121,3 +133,14 @@ toSSM (SplFunction label _ _) = do
     -- clear out room for return value
     out $ Label label
     out HALT
+
+
+isEmptySSM :: [SSM]
+isEmptySSM = [
+        Label "isEmpty",
+        -- gets a list ptr as argument at the top of the stackPtr
+        LDC 0,
+        CMP,
+        -- FIXME write result
+        RET
+    ]
