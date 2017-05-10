@@ -27,7 +27,7 @@ data SplInstruction
     | SplBinaryOperation SplBinaryOperator SplPseudoRegister SplPseudoRegister SplPseudoRegister
     | SplUnaryOperation SplUnaryOperator SplPseudoRegister SplPseudoRegister
     | SplJumpTarget SplLabel
-    | SplRet SplPseudoRegister
+    | SplRet (Maybe SplPseudoRegister)
     | SplJump SplLabel
     | SplJumpIf SplPseudoRegister SplLabel
     | SplJumpIfNot SplPseudoRegister SplLabel
@@ -97,7 +97,8 @@ replaceName from to instruction = case instruction of
     (SplCall label args) -> SplCall label $ map replace args
     (SplBinaryOperation op target a b) -> SplBinaryOperation op (replace target) (replace a) (replace b)
     (SplUnaryOperation op target a) -> SplUnaryOperation op (replace target) (replace a)
-    (SplRet r) -> SplRet (replace r)
+    (SplRet (Just r)) -> SplRet $ Just (replace r)
+    SplRet Nothing -> SplRet Nothing
     (SplFunction label args ir) -> SplFunction label (map replace args) ir
     (SplJumpIf r label) -> SplJumpIf (replace r) label
     (SplJumpIfNot r label) -> SplJumpIfNot (replace r) label
@@ -138,6 +139,11 @@ instance ToIR SplStmt where
         argIRsResultRegs <- mapM exprToIR args
         let (argIRs, resultRegs) = unzip argIRsResultRegs
         return (concat argIRs ++ [SplCall name resultRegs])
+
+    toIR SplReturnVoidStmt = return [SplRet Nothing]
+    toIR (SplReturnStmt expr) = do
+        (exprIR, resultRegister) <- exprToIR expr
+        return $ exprIR ++ [SplRet (Just resultRegister)]
 
 instance ToIR Spl where
     toIR (Spl x) = do
