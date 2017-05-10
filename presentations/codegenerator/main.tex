@@ -1,0 +1,115 @@
+\documentclass[department=icis, slidenumbers=slide, official=true]{beamerruhuisstijl}
+\title{Code Generation in Haskell}
+\subtitle{Aaron van Geffen and Thom Wiggers}
+\date{\today}
+\author{Aaron van Geffen \and Thom Wiggers}
+
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{cleveref}
+\usepackage{color}
+\usepackage{minted}
+\usepackage{multicol}
+\usepackage{ulem}
+
+\usemintedstyle{friendly}
+
+\begin{document}
+
+\begin{frame}
+    \titlepage{}
+\end{frame}
+
+% * Problemen met Type Inference benoemen
+% 	* Eerst afgemaakt voor aan de code generation begonnen werd
+
+% * Problemen met overloading: hoe gaan we print doen?
+
+% * Conclusie [ergens]: oeps, we hadden een geannoteerde AST moeten maken
+
+% * Typesysteem van Haskell benutten voor vertaalslag: IR en SSM
+
+% * Vertalen naar straight-line program in IR
+
+% * Register-allocatie: praktisch niet nodig, bijna alle OPs in SSM werken op stack
+
+% * ARM64 / AArch64 voor de volgende keer -> Cortex A53
+
+
+
+
+
+\begin{frame}{Outline}
+    \tableofcontents
+\end{frame}
+
+
+\section{State of Affairs}
+\begin{frame}{State of Affairs} % State of the SPLunion
+
+\end{frame}
+
+
+\section{From AST to Intermediate Representation}
+\begin{frame}{Intermediate Representation}
+    \fontsize{8pt}{12}\selectfont
+    \inputminted{Haskell}{examples/ir_instructions.hs}
+\end{frame}
+
+\begin{frame}{Converting SPL into Straight-line Program}
+    \vspace{30pt}
+    Convert this: \\
+    \texttt{r = f(g(x), h(y), k(z));}
+
+    \vspace{30pt}
+    \only<2>{
+        Into this: \\
+        \texttt{a = g(x); \\
+                b = h(y); \\
+                c = k(z); \\
+                r = f(a, b, c); \\
+        }
+    }
+\end{frame}
+
+\section{From IR to Simple Stack Machine}
+\begin{frame}{Simple Stack Machine}
+    \fontsize{8pt}{9}\selectfont
+
+    % \begin{multicols}{3}
+    %     \inputminted{Haskell}{examples/newtypes.hs}
+    % \end{multicols}
+
+    \begin{multicols}{3}
+        \inputminted{Haskell}{examples/ssm.hs}
+    \end{multicols}
+
+\end{frame}
+
+
+\section{Next project}
+\begin{frame}{Next project}
+    \begin{itemize}[<+->]
+        \item
+            \only<1>{
+                Initial idea: let's build this on LLVM!
+            }
+            \only<2->{
+                \sout{Initial idea: let's build this on LLVM!}
+            }
+        \item
+            Actually, let's use these Cortex A53 we have lying around!
+        \item
+            AArch64 (ARM64) architecture.
+        \item
+            Challenges\ldots
+            \begin{itemize}[<+->]
+                \item Real hardware!
+                \item Register allocation
+                \item Debugging?
+            \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\end{document}
