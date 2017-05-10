@@ -1,5 +1,5 @@
 data SSMState = SSMState {
-        stackPtr :: Int,
+         stackPtr :: Int,
         globalMap :: Map.Map String (Offset, Scope),
         scopedMap :: Map.Map String (Offset, Scope)
     }

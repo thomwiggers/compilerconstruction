@@ -28,16 +28,15 @@
 
 % * Conclusie [ergens]: oeps, we hadden een geannoteerde AST moeten maken
 
+
 % * Typesysteem van Haskell benutten voor vertaalslag: IR en SSM
 
 % * Vertalen naar straight-line program in IR
 
+
 % * Register-allocatie: praktisch niet nodig, bijna alle OPs in SSM werken op stack
 
 % * ARM64 / AArch64 voor de volgende keer -> Cortex A53
-
-
-
 
 
 \begin{frame}{Outline}
@@ -47,14 +46,57 @@
 
 \section{State of Affairs}
 \begin{frame}{State of Affairs} % State of the SPLunion
+    \pause
+    \begin{itemize}[<+->]
+        \item Off to a rocky start \ldots
+        \item We had to finish our type checker, still.
+            \vspace{1em}
 
+        \item Basic type inference had already been implemented \ldots
+        \item ... but we were still struggling with overloading: how to do `print`?
+            \vspace{1em}
+
+        \item Loads of `with the knowledge we have today' moments \ldots
+        \item We should probably have built an annotated AST.
+            \vspace{1em}
+
+        \item \ldots
+    \end{itemize}
 \end{frame}
 
 
 \section{From AST to Intermediate Representation}
 \begin{frame}{Intermediate Representation}
     \fontsize{8pt}{12}\selectfont
+    \pause
     \inputminted{Haskell}{examples/ir_instructions.hs}
+\end{frame}
+
+\section{From IR to Simple Stack Machine}
+\begin{frame}{Simple Stack Machine}
+    \fontsize{8pt}{9}\selectfont
+
+    % \pause
+    % \begin{multicols}{3}
+    %     \inputminted{Haskell}{examples/newtypes.hs}
+    % \end{multicols}
+
+    \pause
+    \begin{multicols}{3}
+        \inputminted{Haskell}{examples/ssm.hs}
+    \end{multicols}
+
+\end{frame}
+
+\begin{frame}{Writer Monad}
+    \pause
+    \inputminted{Haskell}{examples/ssm_monad.hs}
+\end{frame}
+
+\begin{frame}{Example: binary operators}
+    \fontsize{8pt}{9}\selectfont
+    \pause
+    \inputminted{Haskell}{examples/binop_to_ssm.hs}
 \end{frame}
 
 \begin{frame}{Converting SPL into Straight-line Program}
@@ -68,37 +110,15 @@
         \texttt{a = g(x); \\
                 b = h(y); \\
                 c = k(z); \\
-                r = f(a, b, c); \\
-        }
+                r = f(a, b, c); }
     }
-\end{frame}
-
-\section{From IR to Simple Stack Machine}
-\begin{frame}{Simple Stack Machine}
-    \fontsize{8pt}{9}\selectfont
-
-    % \begin{multicols}{3}
-    %     \inputminted{Haskell}{examples/newtypes.hs}
-    % \end{multicols}
-
-    \begin{multicols}{3}
-        \inputminted{Haskell}{examples/ssm.hs}
-    \end{multicols}
-
-\end{frame}
-
-\begin{frame}{Writer Monad}
-    \inputminted{Haskell}{examples/ssm_monad.hs}
-\end{frame}
-
-\begin{frame}{Example: binary operators}
-    \fontsize{8pt}{9}\selectfont
-    \inputminted{Haskell}{examples/binop_to_ssm.hs}
 \end{frame}
 
 \section{Next project}
 \begin{frame}{Next project}
     \begin{itemize}[<+->]
+        \setlength\itemsep{1em}
+
         \item
             \only<1>{
                 Initial idea: let's build this on LLVM!
@@ -117,6 +137,20 @@
                 \item Register allocation
                 \item Debugging?
             \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Closing words}
+    \begin{itemize}[<+->]
+        \setlength\itemsep{1em}
+
+        \item No regrets for choosing Haskell as the programming language!
+
+        \item Still (nice) challenges ahead for the actual code generation.
+
+        \item Optimistic about generating code for ARM64.
+
+        \item Stay tuned for a nice demo next time. \texttt{:-)}
     \end{itemize}
 \end{frame}
 
