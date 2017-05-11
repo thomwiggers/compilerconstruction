@@ -4,32 +4,28 @@ module SplIRtoSSM where
 import           Control.Monad.State
 import           Control.Monad.Writer
 import           Data.Int             (Int32)
-import qualified Data.Map             as Map
 import           Data.Maybe           (fromMaybe)
 import           Prelude
 import           SplAST               (SplBinaryOperator (..),
                                        SplUnaryOperator (..))
 import           SplIR
-
 import           SplSSM
+
+import qualified Data.Map             as Map
 
 data Scope
     = Global
     | Local
 
+type RegisterMap = Map.Map String (Offset, Scope)
+
 data SSMState = SSMState {
         stackPtr  :: Int,
-        globalMap :: Map.Map String (Offset, Scope),
-        scopedMap :: Map.Map String (Offset, Scope)
+        globalMap :: RegisterMap,
+        scopedMap :: RegisterMap
     }
 
 type IRtoSSMState = WriterT [SSM] (State SSMState) ()
-
-sizeOf :: SplPseudoRegister -> Int
-sizeOf (Reg _)     = 1
-sizeOf (Tuple l r) = sizeOf l + sizeOf r
-sizeOf (List _ _)  = 1       -- heap ptr
-sizeOf EmptyList   = 1      -- null ptr
 
 out :: SSM -> IRtoSSMState
 out x = tell [x]
@@ -108,10 +104,17 @@ toSSM (SplJumpIfNot (Reg cond) label) = do
     -- brt eats the top element from the stack
     decreaseStackPointer
 toSSM (SplJumpTarget label) = out $ Label label
-toSSM (SplRet register) =
+toSSM (SplRet register) = do
     -- fetch result register
     -- push return value in right place
     -- return?
+    case register of
+        Nothing      -> out $ Comment "return void"
+        Just (Reg x) -> out $ STR RR
+    -- fix stack pointer
+    spOffset <- gets stackPtr
+    out $ ADJ $ -spOffset
+    out $ STR MP
     out RET
 toSSM (SplMov (Reg to) (Reg from)) = do
     loadFromStack from
@@ -127,12 +130,62 @@ toSSM (SplMovImm (Reg to) (SplImmBool i)) = do
     out $ LDC $ if i then 0 else 1
     modify $ pushOnStack to 1
 
-toSSM (SplFunction label _ _) = do
-    -- determine call semantics (arguments on stack in order?)
+toSSM (SplCall name arguments) = do
+    -- pop all arguments
+    -- branch to function
+    out $ BSR name
+    -- get rid of arguments
+    out $ ADJ (-(length arguments))
+    -- load result register to finish up
+    out $ LDR RR
+
+toSSM (SplFunction label args instrs) = do
+    {- call semantics:
+        - arguments on stack
+        - followed by return address
+        - MP = start locals
+        - SP = end locals
+        - result stored in RR
+        - return:
+            - leave stack frame
+            - pop MP
+            - RET
+        - callee adjusts stack for args and pushes RR
+    -}
     -- set scope with the arguments
     -- clear out room for return value
     out $ Label label
-    out HALT
+
+    currentState <- get
+
+    -- store MP
+    out $ LDR MP
+    increaseStackPointer
+
+    -- set MP = SP
+    out $ LDRR MP SP
+
+    -- negative offset from MP
+    let argumentOffset = -2  - length args
+    let newScope = insertArguments args argumentOffset $ globalMap currentState
+    let scopedState = currentState {
+        scopedMap = newScope,
+        stackPtr = 0
+    }
+
+    put scopedState
+
+    -- generate instructions nested in this function
+    mapM_ toSSM instrs
+
+    -- fix state
+    put currentState
+    out RET
+    where
+        insertArguments :: [SplPseudoRegister] -> Offset -> RegisterMap -> RegisterMap
+        insertArguments [] _ st = st
+        insertArguments (Reg x:xs) n st =
+            Map.insert x (n, Local) (insertArguments xs (n+1) st)
 
 
 isEmptySSM :: [SSM]
@@ -141,6 +194,6 @@ isEmptySSM = [
         -- gets a list ptr as argument at the top of the stackPtr
         LDC 0,
         CMP,
-        -- FIXME write result
+        STR RR,
         RET
     ]
