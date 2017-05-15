@@ -38,12 +38,25 @@ data SplInstruction
 
 
 data Env = Env {
-        nextVar :: Int,
+        nextVar   :: Int,
         nextLabel :: Int
     }
 
 type IRState = State Env
 
+
+isFunction :: SplInstruction -> Bool
+isFunction SplFunction{} = True
+isFunction _             = False
+
+astToIR :: Spl -> SplIR
+astToIR spl = if (not $ any (isFunctionNamed "main") result)
+        then error "No main function defined"
+        else result
+    where
+        isFunctionNamed needle (SplFunction name _ _) = name == needle
+        isFunctionNamed _ _                           = False
+        result = evalState (toIR spl) Env{nextVar = 0, nextLabel = 0}
 
 getNextVar :: IRState SplPseudoRegister
 getNextVar = do
@@ -59,8 +72,14 @@ getNextLabel prefix = do
     put s{nextLabel = 1 + nextLabel s}
     return $ prefix ++ show i
 
-exprToIR :: SplExpr -> IRState (SplIR, SplPseudoRegister)
-exprToIR (SplIdentifierExpr name SplFieldNone) = return ([], Reg name)
+exprToIR :: SplExpr -> IRState ([SplInstruction], SplPseudoRegister)
+exprToIR (SplIdentifierExpr name field) = return ([], wrapField field $ Reg name)
+    where
+        wrapField SplFieldNone inner    = inner
+        wrapField (SplFieldFst f) inner = wrapField f $ TupleFst inner
+        wrapField (SplFieldSnd f) inner = wrapField f $ TupleSnd inner
+        wrapField _ _inner              = error "not yet implemented"
+
 exprToIR (SplBinaryExpr op e1 e2) = do
     (e1IR, e1ResultRegister) <- exprToIR e1
     (e2IR, e2ResultRegister) <- exprToIR e2
@@ -68,31 +87,40 @@ exprToIR (SplBinaryExpr op e1 e2) = do
     return (e1IR ++ e2IR ++
                 [SplBinaryOperation op resultRegister e1ResultRegister e2ResultRegister],
             resultRegister)
+
 exprToIR (SplUnaryExpr op e1) = do
     (e1IR, e1ResultRegister) <- exprToIR e1
     resultRegister <- getNextVar
     return (e1IR ++
                 [SplUnaryOperation op resultRegister e1ResultRegister],
             resultRegister)
+
 exprToIR (SplTupleExpr l r) = do
     (lIR, lResultRegister) <- exprToIR l
     (rIR, rResultRegister) <- exprToIR r
     return (lIR ++ rIR, Tuple lResultRegister rResultRegister)
+
 exprToIR (SplIntLiteralExpr i) = do
     resultRegister <- getNextVar
     return ([SplMovImm resultRegister (SplImmInt i)], resultRegister)
+
 exprToIR (SplCharLiteralExpr i) = do
     resultRegister <- getNextVar
     return ([SplMovImm resultRegister (SplImmChar i)], resultRegister)
+
 exprToIR (SplBooleanLiteralExpr i) = do
     resultRegister <- getNextVar
     return ([SplMovImm resultRegister (SplImmBool i)], resultRegister)
+
 exprToIR (SplFuncCallExpr name args) = do
     argIRsResultRegs <- mapM exprToIR args
     let (argIRs, resultRegs) = unzip argIRsResultRegs
     resultRegister <- getNextVar
     return (concat argIRs ++ [SplCall name resultRegs], resultRegister)
 
+exprToIR SplEmptyListExpr = do
+    resultRegister <- getNextVar
+    return ([], resultRegister)
 
 replaceName :: SplPseudoRegister -> SplPseudoRegister -> SplInstruction -> SplInstruction
 replaceName from to instruction = case instruction of
@@ -143,6 +171,7 @@ instance ToIR SplStmt where
         return (concat argIRs ++ [SplCall name resultRegs])
 
     toIR SplReturnVoidStmt = return [SplRet Nothing]
+
     toIR (SplReturnStmt expr) = do
         (exprIR, resultRegister) <- exprToIR expr
         return $ exprIR ++ [SplRet (Just resultRegister)]

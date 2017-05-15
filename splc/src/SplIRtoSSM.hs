@@ -27,6 +27,13 @@ data SSMState = SSMState {
 
 type IRtoSSMState = WriterT [SSM] (State SSMState) ()
 
+compileToSSM :: SplIR -> [SSM]
+compileToSSM ir = evalState (execWriterT (programToSSM ir)) emptySSMState
+
+emptySSMState :: SSMState
+emptySSMState = SSMState {
+    stackPtr = 0, globalMap = Map.empty, scopedMap = Map.empty}
+
 out :: SSM -> IRtoSSMState
 out x = tell [x]
 
@@ -61,6 +68,33 @@ getStackVariable name st =
     fromMaybe (error "You tried to find something on the stack I don't know")
               (Map.lookup name $ scopedMap st)
 
+programToSSM :: SplIR -> IRtoSSMState
+programToSSM ir = do
+    let decls = filter (not . isFunction) ir
+    let functions = filter isFunction ir
+
+    -- cp SP to R5
+    out $ LDRR R5 SP
+
+    -- first generate code for declarations
+    mapM_ toSSM decls
+
+    -- make the generated locals the globals that they are
+    vars <- gets scopedMap
+    modify $ \st -> st {globalMap = Map.map (\(off, Local) -> (off, Global)) vars}
+
+    -- generate branch to main
+    out $ BSR "main"
+    -- We need to halt after return from main.
+    out HALT
+
+    -- generate functions
+    mapM_ toSSM functions
+
+    tell isEmptySSM
+
+    out HALT
+
 toSSM :: SplInstruction -> IRtoSSMState
 toSSM (SplBinaryOperation op (Reg rd) (Reg r1) (Reg r2)) = do
     loadFromStack r1
@@ -73,10 +107,10 @@ toSSM (SplBinaryOperation op (Reg rd) (Reg r1) (Reg r2)) = do
         SplOperatorModulus      -> out MOD
         SplOperatorLess         -> out SplSSM.LT
         SplOperatorLessEqual    -> out LE
-        SplOperatorEqual        -> out CMP
+        SplOperatorEqual        -> out SplSSM.EQ
         SplOperatorGreaterEqual -> out GE
         SplOperatorGreater      -> out SplSSM.GT
-        SplOperatorNotEqual     -> out CMP >> out NOT
+        SplOperatorNotEqual     -> out NE
         SplOperatorAnd          -> out AND
         SplOperatorOr           -> out OR
         SplOperatorCons         -> error "don't know how to handle lists yet"
@@ -113,8 +147,8 @@ toSSM (SplRet register) = do
         Just (Reg x) -> out $ STR RR
     -- fix stack pointer
     spOffset <- gets stackPtr
-    out $ ADJ $ -spOffset
     out $ STR MP
+    out $ AJS $ -(spOffset  - 1)  -- STR MP also decrements by 1
     out RET
 toSSM (SplMov (Reg to) (Reg from)) = do
     loadFromStack from
@@ -135,7 +169,7 @@ toSSM (SplCall name arguments) = do
     -- branch to function
     out $ BSR name
     -- get rid of arguments
-    out $ ADJ (-(length arguments))
+    out $ AJS (-(length arguments))
     -- load result register to finish up
     out $ LDR RR
 
@@ -180,6 +214,7 @@ toSSM (SplFunction label args instrs) = do
 
     -- fix state
     put currentState
+    decreaseStackPointer
     out RET
     where
         insertArguments :: [SplPseudoRegister] -> Offset -> RegisterMap -> RegisterMap
@@ -193,7 +228,7 @@ isEmptySSM = [
         Label "isEmpty",
         -- gets a list ptr as argument at the top of the stackPtr
         LDC 0,
-        CMP,
+        SplSSM.EQ,
         STR RR,
         RET
     ]
