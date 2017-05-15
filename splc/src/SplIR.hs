@@ -1,14 +1,18 @@
 module SplIR where
 
-import Prelude
-import SplAST
-import Control.Monad.State
+import           Control.Monad.State
+import           Prelude
+import           SplAST
 
+-- FIXME split declarations and functions as separate blocks
 type SplIR = [SplInstruction]
 
 data SplPseudoRegister
     -- simple register
     = Reg String
+    | TupleFst SplPseudoRegister
+    | TupleSnd SplPseudoRegister
+    --- TupleLeft (TupleRight (Reg mijntuple))
     -- pointers left, right
     | Tuple SplPseudoRegister SplPseudoRegister
     -- list value and pointer to tail
