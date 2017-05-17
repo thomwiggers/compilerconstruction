@@ -105,7 +105,9 @@ programToSSM ir = do
     -- generate functions
     mapM_ toSSM functions
 
+    -- would need to check if they're used
     tell isEmptySSM
+    tell printSSM
 
     out HALT
 
@@ -250,9 +252,19 @@ toSSM (SplFunction label args instrs) = do
 isEmptySSM :: [SSM]
 isEmptySSM = [
         Label "isEmpty",
-        -- gets a list ptr as argument at the top of the stackPtr
+        -- gets a list ptr as argument at the top of the stackPtr before the return address
+        LDS -1,
         LDC 0,
         SplSSM.EQ,
         STR RR,
+        RET
+    ]
+
+printSSM :: [SSM]
+printSSM = [
+        Label "print",
+        -- gets a character as an argument at the top of the stackPtr before the return address
+        LDS -1,
+        TRAP PopPrintChar,
         RET
     ]
