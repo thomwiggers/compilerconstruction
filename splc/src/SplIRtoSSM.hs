@@ -4,6 +4,7 @@ module SplIRtoSSM where
 import           Control.Monad.State
 import           Control.Monad.Writer
 import           Data.Int             (Int32)
+import           Data.Char            (ord)
 import           Data.Maybe           (fromMaybe)
 import           Prelude
 import           SplAST               (SplBinaryOperator (..),
@@ -39,25 +40,38 @@ out x = tell [x]
 
 pushOnStack :: String -> Size -> SSMState -> SSMState
 pushOnStack r s st = st {
-        scopedMap = Map.insert r (sp, Local) $ scopedMap st,
+        scopedMap = Map.insert r (sp + 1, Local) $ scopedMap st,
         stackPtr = sp + s
     }
     where sp = stackPtr st
 
+pushVariable :: String -> IRtoSSMState
+pushVariable name = do
+    sp <- gets stackPtr
+    modify $ pushOnStack name 1
+    out $ Comment $ "Stored " ++ name ++ " on stack at offset " ++ show sp
+
 increaseStackPointer :: IRtoSSMState
-increaseStackPointer = modify $ \st -> st { stackPtr = stackPtr st + 1}
+increaseStackPointer = do
+    sp' <- gets stackPtr
+    let sp = sp' + 1
+    out $ Comment $ "Incrementing SP to " ++ show sp
+    modify $ \st -> st { stackPtr = sp }
 
 decreaseStackPointer :: IRtoSSMState
-decreaseStackPointer = modify $ \st -> st { stackPtr = stackPtr st - 1}
+decreaseStackPointer = do
+    sp' <- gets stackPtr
+    let sp = sp' - 1
+    out $ Comment $ "Decrementing SP to " ++ show sp
+    modify $ \st -> st { stackPtr = sp }
 
 loadFromStack :: String -> IRtoSSMState
 loadFromStack name = do
     (offset, loc) <- gets $ getStackVariable name
     case loc of
         Local -> do
-            out $ Comment $ "Loading " ++ name
+            out $ Comment $ "Loading " ++ name ++ " from offset " ++ show offset
             out $ LDL offset
-            increaseStackPointer
         Global -> do
             out $ Comment "FIXME: globals not yet implemented"
             out HALT
@@ -116,14 +130,14 @@ toSSM (SplBinaryOperation op (Reg rd) (Reg r1) (Reg r2)) = do
         SplOperatorCons         -> error "don't know how to handle lists yet"
     decreaseStackPointer -- eat two vars
     decreaseStackPointer
-    modify $ pushOnStack rd 1
+    pushVariable rd
 toSSM (SplUnaryOperation op (Reg to) (Reg from)) = do
     loadFromStack from
     case op of
         SplOperatorInvert -> out NOT
         SplOperatorNegate -> out NEG
     decreaseStackPointer
-    modify $ pushOnStack to 1
+    pushVariable to
 toSSM (SplJump label) = out $ BRA label
 toSSM (SplJumpIf (Reg cond) label) = do
     out $ Comment $ "jump if " ++ cond
@@ -144,25 +158,33 @@ toSSM (SplRet register) = do
     -- return?
     case register of
         Nothing      -> out $ Comment "return void"
-        Just (Reg x) -> out $ STR RR
+        Just (Reg x) -> do
+            loadFromStack x
+            out $ STR RR
+            decreaseStackPointer
     -- fix stack pointer
     spOffset <- gets stackPtr
+    out $ AJS $ -spOffset
     out $ STR MP
-    out $ AJS $ -(spOffset  - 1)  -- STR MP also decrements by 1
     out RET
 toSSM (SplMov (Reg to) (Reg from)) = do
     loadFromStack from
-    modify $ pushOnStack to 1
+    pushVariable to
 toSSM (SplMovImm (Reg to) (SplImmInt i)) = do
     when (i < toInteger (minBound :: Int32) || i > toInteger (maxBound :: Int32))
         $ error "SSM only supports signed 32-bit integers"
     -- set variable
     out $ LDC (fromInteger i)
-    modify $ pushOnStack to 1
+    pushVariable to
 toSSM (SplMovImm (Reg to) (SplImmBool i)) = do
     -- set variable
     out $ LDC $ if i then 0 else 1
-    modify $ pushOnStack to 1
+    pushVariable to
+
+toSSM (SplMovImm (Reg to) (SplImmChar c)) = do
+    -- set variable
+    out $ LDC (ord c)
+    pushVariable to
 
 toSSM (SplCall name arguments) = do
     -- pop all arguments
@@ -172,6 +194,7 @@ toSSM (SplCall name arguments) = do
     out $ AJS (-(length arguments))
     -- load result register to finish up
     out $ LDR RR
+    increaseStackPointer
 
 toSSM (SplFunction label args instrs) = do
     {- call semantics:
@@ -194,7 +217,6 @@ toSSM (SplFunction label args instrs) = do
 
     -- store MP
     out $ LDR MP
-    increaseStackPointer
 
     -- set MP = SP
     out $ LDRR MP SP
@@ -212,10 +234,12 @@ toSSM (SplFunction label args instrs) = do
     -- generate instructions nested in this function
     mapM_ toSSM instrs
 
+    -- generate a return, although that may be rubbish
+    out $ Comment "End of function return, may be BS"
+    toSSM (SplRet Nothing)
+
     -- fix state
     put currentState
-    decreaseStackPointer
-    out RET
     where
         insertArguments :: [SplPseudoRegister] -> Offset -> RegisterMap -> RegisterMap
         insertArguments [] _ st = st
