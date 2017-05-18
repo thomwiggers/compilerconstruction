@@ -509,8 +509,8 @@ instance Inferer SplStmt where
         (se, te) <- infer expr >>= unsimple
         modify $ apply se
         (sn, tn) <- lookupEnv (Var, name) >>= unsimple
-        st <- unify (apply sn te) tn
-        (_, tf) <- inferField (apply st tn) field
+        (_, tf) <- inferField (apply sn tn) field
+        st <- unify (apply sn te) tf
         returnSimple (st `compose` sn `compose` se) tf
 
 {-
