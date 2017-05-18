@@ -79,7 +79,7 @@ loadFromStack name = do
 
 getStackVariable :: String -> SSMState -> (Offset, Scope)
 getStackVariable name st =
-    fromMaybe (error "You tried to find something on the stack I don't know")
+    fromMaybe (error $ "You tried to find " ++ name ++ " on the stack, which I don't know")
               (Map.lookup name $ scopedMap st)
 
 programToSSM :: SplIR -> IRtoSSMState
@@ -118,6 +118,7 @@ programToSSM ir = do
         isFunctionNamed _ _                           = False
 
 
+-- gets something from somewhere on the stack (perhaps via a heap pointer) to the top
 load :: SplPseudoRegister -> IRtoSSMState
 load (Reg name) = loadFromStack name
 load (TupleFst reg) = loadFromHeap reg $ -1
@@ -129,6 +130,7 @@ load (ListTl reg) = loadFromHeap reg 0
 loadFromHeap :: SplPseudoRegister -> Size -> IRtoSSMState
 loadFromHeap reg offset = do
     -- load address represented by reg
+    out $ Comment $ "loading heap pointer " ++ show reg
     load reg
     -- use address at the top of the stack to load from heap at offset (reverse order)
     out $ LDA offset
@@ -237,7 +239,7 @@ toSSM (SplMovImm (Reg to) (SplImmChar c)) = do
     out $ LDC (ord c)
     pushVariable to
 
-toSSM (SplCall name arguments) = do
+toSSM (SplCall name result arguments) = do
     -- pop all arguments
     mapM_ load arguments
     -- branch to function
@@ -245,8 +247,11 @@ toSSM (SplCall name arguments) = do
     -- get rid of arguments
     out $ AJS (-(length arguments))
     -- load result register to finish up
-    out $ LDR RR
-    increaseStackPointer
+    case result of
+        Just r -> do
+            out $ LDR RR
+            store r
+        Nothing -> out $ Comment "No result is used"
 
 toSSM (SplFunction label args instrs) = do
     {- call semantics:

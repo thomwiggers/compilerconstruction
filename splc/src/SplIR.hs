@@ -37,7 +37,7 @@ data SplInstruction
     | SplJumpIfNot SplPseudoRegister SplLabel
     | SplMov SplPseudoRegister SplPseudoRegister
     | SplMovImm SplPseudoRegister SplImm
-    | SplCall SplLabel [SplPseudoRegister]
+    | SplCall SplLabel (Maybe SplPseudoRegister) [SplPseudoRegister]
     deriving (Show)
 
 
@@ -110,9 +110,10 @@ exprToIR (SplBooleanLiteralExpr i) = do
 
 exprToIR (SplFuncCallExpr name args) = do
     argIRsResultRegs <- mapM exprToIR args
-    let (argIRs, resultRegs) = unzip argIRsResultRegs
+    let (argIRs, argResultRegs) = unzip argIRsResultRegs
     resultRegister <- getNextVar
-    return (concat argIRs ++ [SplCall name resultRegs], resultRegister)
+    return (concat argIRs ++ [SplCall name (Just resultRegister) argResultRegs],
+            resultRegister)
 
 exprToIR SplEmptyListExpr = do
     resultRegister <- getNextVar
@@ -127,7 +128,8 @@ wrapField (SplFieldTl f)  inner = wrapField f $ ListTl inner
 
 replaceName :: SplPseudoRegister -> SplPseudoRegister -> SplInstruction -> SplInstruction
 replaceName from to instruction = case instruction of
-    (SplCall label args) -> SplCall label $ map replace args
+    SplCall label Nothing args -> SplCall label Nothing $ map replace args
+    (SplCall label (Just resultRegister) args) -> SplCall label (Just $ replace resultRegister) $ map replace args
     (SplBinaryOperation op target a b) -> SplBinaryOperation op (replace target) (replace a) (replace b)
     (SplUnaryOperation op target a) -> SplUnaryOperation op (replace target) (replace a)
     (SplRet (Just r)) -> SplRet $ Just (replace r)
@@ -172,7 +174,7 @@ instance ToIR SplStmt where
     toIR (SplFuncCallStmt name args) = do
         argIRsResultRegs <- mapM exprToIR args
         let (argIRs, resultRegs) = unzip argIRsResultRegs
-        return (concat argIRs ++ [SplCall name resultRegs])
+        return (concat argIRs ++ [SplCall name Nothing resultRegs])
 
     toIR SplReturnVoidStmt = return [SplRet Nothing]
 
