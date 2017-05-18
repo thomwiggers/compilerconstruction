@@ -10,13 +10,13 @@ type SplIR = [SplInstruction]
 data SplPseudoRegister
     -- simple register
     = Reg String
+    -- ex: TupleLeft (TupleRight (Reg mijntuple))
     | TupleFst SplPseudoRegister
     | TupleSnd SplPseudoRegister
-    --- TupleLeft (TupleRight (Reg mijntuple))
-    -- pointers left, right
-    | Tuple SplPseudoRegister SplPseudoRegister
     -- list value and pointer to tail
-    | List SplPseudoRegister SplPseudoRegister
+    | ListHd SplPseudoRegister
+    | ListTl SplPseudoRegister
+    -- ex: ListHd (TupleFst (Reg mijnTuplemetlinkseenlijst))
     -- for tail empty
     | EmptyList
     deriving (Show, Eq)
@@ -54,13 +54,7 @@ isFunction SplFunction{} = True
 isFunction _             = False
 
 astToIR :: Spl -> SplIR
-astToIR spl = if (not $ any (isFunctionNamed "main") result)
-        then error "No main function defined"
-        else result
-    where
-        isFunctionNamed needle (SplFunction name _ _) = name == needle
-        isFunctionNamed _ _                           = False
-        result = evalState (toIR spl) Env{nextVar = 0, nextLabel = 0}
+astToIR spl = evalState (toIR spl) Env{nextVar = 0, nextLabel = 0}
 
 getNextVar :: IRState SplPseudoRegister
 getNextVar = do
@@ -102,7 +96,10 @@ exprToIR (SplUnaryExpr op e1) = do
 exprToIR (SplTupleExpr l r) = do
     (lIR, lResultRegister) <- exprToIR l
     (rIR, rResultRegister) <- exprToIR r
-    return (lIR ++ rIR, Tuple lResultRegister rResultRegister)
+    resultRegister <- getNextVar
+    return (lIR ++ rIR ++ [SplMov (TupleFst resultRegister) lResultRegister,
+                           SplMov (TupleSnd resultRegister) rResultRegister],
+            resultRegister)
 
 exprToIR (SplIntLiteralExpr i) = do
     resultRegister <- getNextVar

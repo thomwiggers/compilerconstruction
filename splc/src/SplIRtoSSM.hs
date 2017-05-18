@@ -98,8 +98,10 @@ programToSSM ir = do
     modify $ \st -> st {globalMap = Map.map (\(off, Local) -> (off, Global)) vars}
 
     -- generate branch to main
-    out $ BSR "main"
-    -- We need to halt after return from main.
+    when (any (isFunctionNamed "main") ir)
+        (out $ BSR "main")
+
+    -- We need to halt after return from main (or if there is no main).
     out HALT
 
     -- generate functions
@@ -111,10 +113,57 @@ programToSSM ir = do
 
     out HALT
 
+    where
+        isFunctionNamed needle (SplFunction name _ _) = name == needle
+        isFunctionNamed _ _                           = False
+
+
+load :: SplPseudoRegister -> IRtoSSMState
+load (Reg name) = loadFromStack name
+load (TupleFst reg) = loadFromHeap reg $ -1
+load (TupleSnd reg) = loadFromHeap reg 0
+load (ListHd reg) = loadFromHeap reg $ -1
+load (ListTl reg) = loadFromHeap reg 0
+
+
+loadFromHeap :: SplPseudoRegister -> Size -> IRtoSSMState
+loadFromHeap reg offset = do
+    -- load address represented by reg
+    load reg
+    -- use address at the top of the stack to load from heap at offset (reverse order)
+    out $ LDA offset
+
+
+store :: SplPseudoRegister -> IRtoSSMState
+store (Reg name) = do
+    -- look up name in stack administration
+    lookupResult <- gets $ \st -> Map.lookup name $ scopedMap st
+    case lookupResult of
+        -- if in map: store top of stack to old location
+        Just (offset, Local) -> do
+            out $ STL offset
+            decreaseStackPointer
+        Just (offset, Global) -> error "do iets met globals"
+        -- if not in map, register current location in map
+        Nothing -> pushVariable name
+store (TupleFst reg) = storeToHeap reg $ -1
+store (TupleSnd reg) = storeToHeap reg 0
+store (ListHd reg) = storeToHeap reg $ -1
+store (ListTl reg) = storeToHeap reg 0
+
+
+storeToHeap :: SplPseudoRegister -> Size -> IRtoSSMState
+storeToHeap reg offset = do
+    -- load the address represented by reg
+    load reg
+    -- store the value, it's right before the address
+    out $ STA offset
+
+
 toSSM :: SplInstruction -> IRtoSSMState
-toSSM (SplBinaryOperation op (Reg rd) (Reg r1) (Reg r2)) = do
-    loadFromStack r1
-    loadFromStack r2
+toSSM (SplBinaryOperation op rd r1 r2) = do
+    load r1
+    load r2
     case op of
         SplOperatorAdd          -> out ADD
         SplOperatorSubtract     -> out SUB
@@ -132,7 +181,7 @@ toSSM (SplBinaryOperation op (Reg rd) (Reg r1) (Reg r2)) = do
         SplOperatorCons         -> error "don't know how to handle lists yet"
     decreaseStackPointer -- eat two vars
     decreaseStackPointer
-    pushVariable rd
+    store rd
 toSSM (SplUnaryOperation op (Reg to) (Reg from)) = do
     loadFromStack from
     case op of
@@ -190,6 +239,7 @@ toSSM (SplMovImm (Reg to) (SplImmChar c)) = do
 
 toSSM (SplCall name arguments) = do
     -- pop all arguments
+    mapM_ load arguments
     -- branch to function
     out $ BSR name
     -- get rid of arguments
@@ -253,7 +303,7 @@ isEmptySSM :: [SSM]
 isEmptySSM = [
         Label "isEmpty",
         -- gets a list ptr as argument at the top of the stackPtr before the return address
-        LDS -1,
+        LDS $ -1,
         LDC 0,
         SplSSM.EQ,
         STR RR,
@@ -264,7 +314,7 @@ printSSM :: [SSM]
 printSSM = [
         Label "print",
         -- gets a character as an argument at the top of the stackPtr before the return address
-        LDS -1,
+        LDS $ -1,
         TRAP PopPrintChar,
         RET
     ]

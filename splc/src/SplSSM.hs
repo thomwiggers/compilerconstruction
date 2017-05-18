@@ -32,6 +32,7 @@ data SSM
     | LDAA Offset               -- Adds the offset to the value at SP
     | STS Offset                -- store a value relative to the SP, on the stack.
     | STH                       -- store a value from the stack to the HP, pushes that address on the stack
+    | STMH Size                 -- Store size words from the stack onto the heap
     | STL Offset                -- store a value relative to the MP
     | STA Offset                -- store a value pointed to by a value on the stack
     | STR Register              -- store a value from the stack in a register.
