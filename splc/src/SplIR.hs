@@ -72,11 +72,6 @@ getNextLabel prefix = do
 
 exprToIR :: SplExpr -> IRState ([SplInstruction], SplPseudoRegister)
 exprToIR (SplIdentifierExpr name field) = return ([], wrapField field $ Reg name)
-    where
-        wrapField SplFieldNone inner    = inner
-        wrapField (SplFieldFst f) inner = wrapField f $ TupleFst inner
-        wrapField (SplFieldSnd f) inner = wrapField f $ TupleSnd inner
-        wrapField _ _inner              = error "not yet implemented"
 
 exprToIR (SplBinaryExpr op e1 e2) = do
     (e1IR, e1ResultRegister) <- exprToIR e1
@@ -123,6 +118,13 @@ exprToIR SplEmptyListExpr = do
     resultRegister <- getNextVar
     return ([], resultRegister)
 
+wrapField :: SplField -> SplPseudoRegister -> SplPseudoRegister
+wrapField SplFieldNone inner    = inner
+wrapField (SplFieldFst f) inner = wrapField f $ TupleFst inner
+wrapField (SplFieldSnd f) inner = wrapField f $ TupleSnd inner
+wrapField (SplFieldHd f)  inner = wrapField f $ ListHd inner
+wrapField (SplFieldTl f)  inner = wrapField f $ ListTl inner
+
 replaceName :: SplPseudoRegister -> SplPseudoRegister -> SplInstruction -> SplInstruction
 replaceName from to instruction = case instruction of
     (SplCall label args) -> SplCall label $ map replace args
@@ -161,9 +163,10 @@ instance ToIR SplStmt where
         return $ condIR ++ (SplJumpIfNot compareRegister elseLabel : (concat thenIR ++ [SplJump elseAfterLabel]))
             ++ (SplJumpTarget elseLabel : concat elseIR) ++ [SplJumpTarget elseAfterLabel]
 
-    toIR (SplAssignmentStmt name SplFieldNone expr) = do
+    toIR (SplAssignmentStmt name field expr) = do
         (exprIR, resultRegister) <- exprToIR expr
-        let exprIR' = map (replaceName resultRegister (Reg name)) exprIR
+        let wrappedReg = wrapField field (Reg name)
+        let exprIR' = map (replaceName resultRegister wrappedReg) exprIR
         return exprIR'
 
     toIR (SplFuncCallStmt name args) = do
