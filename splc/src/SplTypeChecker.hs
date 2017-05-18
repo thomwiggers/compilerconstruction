@@ -82,7 +82,7 @@ normalize (Forall _ body) = Forall (fmap snd ord) (normtype body)
         fv (SplSimple (SplTypeVar a)) = [a]
         fv (SplSimple (SplTypeListR a)) = fv (SplSimple a)
         fv (SplSimple (SplTypeTupleR l r)) = fv (SplSimple l) ++ fv (SplSimple r)
-        fv (SplTypeFunction argTypes retType) = (concat . (map (fv . SplSimple))) argTypes ++ fv (SplSimple retType)
+        fv (SplTypeFunction argTypes retType) = concatMap (fv . SplSimple) argTypes ++ fv (SplSimple retType)
         fv _ = []
 
         normtype :: SplTypeR -> SplTypeR

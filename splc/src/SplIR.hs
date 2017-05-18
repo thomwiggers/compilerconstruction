@@ -129,16 +129,16 @@ wrapField (SplFieldTl f)  inner = wrapField f $ ListTl inner
 replaceName :: SplPseudoRegister -> SplPseudoRegister -> SplInstruction -> SplInstruction
 replaceName from to instruction = case instruction of
     SplCall label Nothing args -> SplCall label Nothing $ map replace args
-    (SplCall label (Just resultRegister) args) -> SplCall label (Just $ replace resultRegister) $ map replace args
-    (SplBinaryOperation op target a b) -> SplBinaryOperation op (replace target) (replace a) (replace b)
-    (SplUnaryOperation op target a) -> SplUnaryOperation op (replace target) (replace a)
-    (SplRet (Just r)) -> SplRet $ Just (replace r)
+    SplCall label (Just resultRegister) args -> SplCall label (Just $ replace resultRegister) $ map replace args
+    SplBinaryOperation op target a b -> SplBinaryOperation op (replace target) (replace a) (replace b)
+    SplUnaryOperation op target a -> SplUnaryOperation op (replace target) (replace a)
+    SplRet (Just r) -> SplRet $ Just (replace r)
     SplRet Nothing -> SplRet Nothing
-    (SplFunction label args ir) -> SplFunction label (map replace args) ir
-    (SplJumpIf r label) -> SplJumpIf (replace r) label
-    (SplJumpIfNot r label) -> SplJumpIfNot (replace r) label
-    (SplMov r r2) -> SplMov (replace r) (replace r2)
-    (SplMovImm r i) -> SplMovImm (replace r) i
+    SplFunction label args ir -> SplFunction label (map replace args) ir
+    SplJumpIf r label -> SplJumpIf (replace r) label
+    SplJumpIfNot r label -> SplJumpIfNot (replace r) label
+    SplMov r r2 -> SplMov (replace r) (replace r2)
+    SplMovImm r i -> SplMovImm (replace r) i
     SplJumpTarget t -> SplJumpTarget t
     SplJump t -> SplJump t
     where
