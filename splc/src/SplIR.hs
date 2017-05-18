@@ -117,7 +117,7 @@ exprToIR (SplFuncCallExpr name args) = do
 
 exprToIR SplEmptyListExpr = do
     resultRegister <- getNextVar
-    return ([], resultRegister)
+    return ([SplMovImm resultRegister (SplImmInt 0)], resultRegister)
 
 wrapField :: SplField -> SplPseudoRegister -> SplPseudoRegister
 wrapField SplFieldNone inner    = inner

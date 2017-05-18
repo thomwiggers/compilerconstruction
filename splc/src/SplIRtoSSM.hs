@@ -3,8 +3,8 @@ module SplIRtoSSM where
 
 import           Control.Monad.State
 import           Control.Monad.Writer
-import           Data.Int             (Int32)
 import           Data.Char            (ord)
+import           Data.Int             (Int32)
 import           Data.Maybe           (fromMaybe)
 import           Prelude
 import           SplAST               (SplBinaryOperator (..),
@@ -120,11 +120,11 @@ programToSSM ir = do
 
 -- gets something from somewhere on the stack (perhaps via a heap pointer) to the top
 load :: SplPseudoRegister -> IRtoSSMState
-load (Reg name) = loadFromStack name
+load (Reg name)     = loadFromStack name
 load (TupleFst reg) = loadFromHeap reg $ -1
 load (TupleSnd reg) = loadFromHeap reg 0
-load (ListHd reg) = loadFromHeap reg $ -1
-load (ListTl reg) = loadFromHeap reg 0
+load (ListHd reg)   = loadFromHeap reg $ -1
+load (ListTl reg)   = loadFromHeap reg 0
 
 
 loadFromHeap :: SplPseudoRegister -> Size -> IRtoSSMState
