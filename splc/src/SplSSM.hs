@@ -13,7 +13,11 @@ data Syscall
     = PopPrintInt       -- 0
     | PopPrintChar      -- 1
     -- there are more, but we don't support them.
-    deriving (Show, Eq)
+    deriving Eq
+
+instance Show Syscall where
+    show PopPrintInt  = "0"
+    show PopPrintChar = "1"
 
 data SSM
     = LDC Int                   -- load a constant.
@@ -94,6 +98,7 @@ instance Show SSM where
     show (LDAA offset)      = "LDAA " ++ show offset
     show (STS offset)       = "STS " ++ show offset
     show STH                = "STH"
+    show (STMH size)        = "STMH " ++ show size
     show (STL offset)       = "STL " ++ show offset
     show (STA offset)       = "STA " ++ show offset
     show (STR register)     = "STR " ++ show register
