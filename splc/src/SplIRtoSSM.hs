@@ -125,7 +125,7 @@ load (TupleFst reg) = loadFromHeap reg $ -1
 load (TupleSnd reg) = loadFromHeap reg 0
 load (ListHd reg)   = loadFromHeap reg $ -1
 load (ListTl reg)   = loadFromHeap reg 0
-load (EmptyList)    = do
+load EmptyList      = do
     out $ Comment "pushing empty list (0-pointer)"
     out $ LDC 0
     increaseStackPointer
@@ -145,8 +145,7 @@ store (Reg name) = do
     lookupResult <- gets $ \st -> Map.lookup name $ scopedMap st
     case lookupResult of
         -- if in map: store top of stack to old location
-        Just (offset, Local) -> do
-            out $ STL offset
+        Just (offset, Local) -> out $ STL offset
         Just (offset, Global) -> do
             out $ LDR R5
             out $ STA offset
@@ -156,7 +155,7 @@ store (TupleFst reg) = storeToHeap reg $ -1
 store (TupleSnd reg) = storeToHeap reg 0
 store (ListHd reg) = storeToHeap reg $ -1
 store (ListTl reg) = storeToHeap reg 0
-store (EmptyList)  = error "Can't store to empty list"
+store EmptyList    = error "Can't store to empty list"
 
 storeToHeap :: SplPseudoRegister -> Size -> IRtoSSMState
 storeToHeap reg offset = do
@@ -266,6 +265,37 @@ toSSM (SplWhile label (condIR, condReg) loopIR) = do
     out $ Comment "Jump back to start of while loop"
     out $ BRA label
     out $ Label endLabel
+
+toSSM (SplIf label condReg thenIR elseIR) = do
+    preState <- get
+    let elseLabel = label ++ "else"
+    let endifLabel = label ++ "end"
+
+    load condReg
+    out $ BRF (if null elseIR then endifLabel else elseLabel)
+    decreaseStackPointer
+
+    mapM_ toSSM thenIR
+
+    -- get rid of then-local variables (due to unpacking of expressions)
+    thenStackPointer <- gets stackPtr
+    adjustStack $ stackPtr preState - thenStackPointer
+    put preState
+
+    unless (null elseIR)
+        (do
+            out $ BRA endifLabel
+            out $ Label elseLabel
+        )
+
+    mapM_ toSSM elseIR
+
+    -- get rid of else-local variables (due to unpacking of expressions)
+    elseStackPointer <- gets stackPtr
+    adjustStack $ stackPtr preState - elseStackPointer
+    put preState
+
+    out $ Label endifLabel
 
 toSSM (SplCall name result arguments) = do
     -- pop all arguments

@@ -71,6 +71,7 @@ data SSM
     | RET
     | HALT
     | TRAP Syscall  -- Call system call
+    | NOP           -- no operation.
     | Label Label
     | Comment String
     deriving Eq
@@ -131,5 +132,6 @@ instance Show SSM where
     show RET                = "RET"
     show HALT               = "HALT"
     show (TRAP syscall)     = "TRAP " ++ show syscall
+    show NOP                = "NOP"
     show (Label label)      = label ++ ":"
     show (Comment string)   = "; " ++ string
