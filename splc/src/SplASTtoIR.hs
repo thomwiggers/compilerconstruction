@@ -95,12 +95,8 @@ replaceName from to instruction = case instruction of
     SplRet (Just r) -> SplRet $ Just (replace r)
     SplRet Nothing -> SplRet Nothing
     SplFunction label args ir -> SplFunction label (map replace args) ir
-    SplJumpIf r label -> SplJumpIf (replace r) label
-    SplJumpIfNot r label -> SplJumpIfNot (replace r) label
     SplMov r r1 -> SplMov (replace r) (replace r1)
     SplMovImm r i -> SplMovImm (replace r) i
-    SplJumpTarget t -> SplJumpTarget t
-    SplJump t -> SplJump t
     w@SplWhile{} -> w
     i@SplIf{} -> i
     where

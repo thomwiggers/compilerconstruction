@@ -197,20 +197,6 @@ toSSM (SplUnaryOperation op to from) = do
         SplOperatorNegate -> out NEG
     decreaseStackPointer
     store to
-toSSM (SplJump label) = out $ BRA label
-toSSM (SplJumpIf (Reg cond) label) = do
-    out $ Comment $ "jump if " ++ cond
-    loadFromStack cond
-    out $ BRT label
-    -- brt eats the top element on the stack
-    decreaseStackPointer
-toSSM (SplJumpIfNot (Reg cond) label) = do
-    out $ Comment $ "jump if not " ++ cond
-    loadFromStack cond
-    out $ BRF label
-    -- brt eats the top element from the stack
-    decreaseStackPointer
-toSSM (SplJumpTarget label) = out $ Label label
 toSSM (SplRet register) = do
     -- fetch result register
     -- push return value in right place
