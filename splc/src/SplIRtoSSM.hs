@@ -225,7 +225,7 @@ toSSM (SplMovImm to (SplImmInt i)) = do
     store to
 toSSM (SplMovImm to (SplImmBool i)) = do
     -- set variable
-    out $ LDC $ if i then 0 else 1
+    out $ LDC $ if i then 1 else 0
     store to
 
 toSSM (SplMovImm to (SplImmChar c)) = do
