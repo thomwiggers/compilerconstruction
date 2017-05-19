@@ -35,9 +35,9 @@ funDecl = do
         fail $ name ++ " is a reserved function name"
 
     args <- parens $ identifier `sepBy` symbol ","
-    (argTypes, retType) <- (
+    (argTypes, retType) <-
         option ([], SplRetType SplTypeUnknown)
-            $ string "::" *> sc *> parseFunTypes)
+            $ string "::" *> sc *> parseFunTypes
 
     -- check if num args matches num types if given
     when (not (null argTypes) && length argTypes /= length args) $
@@ -50,7 +50,7 @@ funDecl = do
     where
         parseFunTypes :: Parser ([SplType], SplRetType)
         parseFunTypes = label "function type definition" $ do
-            args <- (option [] $ try $ (many parseType) <* symbol "->")
+            args <- option [] $ try $ many parseType <* symbol "->"
             retType <- pvoid <|> (SplRetType <$> parseType)
             return (args, retType)
             where
@@ -85,9 +85,9 @@ exprTerms = (SplIntLiteralExpr <$> int)
         <|> (do
                 left <- symbol "(" *> expr
                 c <- symbol ")" <|> symbol ","
-                if (c == ")")
-                    then (return left)
-                    else (SplTupleExpr left <$> expr <* symbol ")")
+                if c == ")"
+                    then return left
+                    else SplTupleExpr left <$> expr <* symbol ")"
             )
         -- parse identifiers or function calls
         -- Again, try is slow
@@ -96,8 +96,8 @@ exprTerms = (SplIntLiteralExpr <$> int)
                 c <- option "NONE" (lookAhead (symbol "." <|> symbol "("))
                 case c of
                     "NONE" -> return $ SplIdentifierExpr name SplFieldNone
-                    "(" -> (SplFuncCallExpr name) <$> parens (expr `sepBy` symbol ",")
-                    "." -> (SplIdentifierExpr name) <$> field
+                    "(" -> SplFuncCallExpr name <$> parens (expr `sepBy` symbol ",")
+                    "." -> SplIdentifierExpr name <$> field
                     _ -> fail "This should never happen (in exprTerms)"
             )
 
@@ -155,13 +155,13 @@ stmt = (readWord "return" *> (
             name <- identifier
             c <- option "NONE" (lookAhead (symbol "." <|> symbol "("))
             case c of
-                "NONE" -> (SplAssignmentStmt name SplFieldNone) <$> parseAssignmentTail
-                "(" -> (SplFuncCallStmt name) <$> parens (expr `sepBy` symbol ",") <* symbol ";"
-                "." -> (SplAssignmentStmt name) <$> field <*> parseAssignmentTail
+                "NONE" -> SplAssignmentStmt name SplFieldNone <$> parseAssignmentTail
+                "(" -> SplFuncCallStmt name <$> parens (expr `sepBy` symbol ",") <* symbol ";"
+                "." -> SplAssignmentStmt name <$> field <*> parseAssignmentTail
                 _ -> fail "This should never happen (in exprTerms)"
         )
     where
-        parseAssignmentTail = (symbol "=") *> expr <* symbol ";"
+        parseAssignmentTail = symbol "=" *> expr <* symbol ";"
 
 field :: Parser SplField
 field = char '.' *> (
@@ -193,7 +193,7 @@ symbol = L.symbol sc
 
 -- Parse an integer
 int :: Parser Integer
-int = (L.signed (void $ string "") (lexeme L.integer)) <?> "Integer literal"
+int = L.signed (void $ string "") (lexeme L.integer) <?> "Integer literal"
 
 -- Between braces
 braces :: Parser a -> Parser a
