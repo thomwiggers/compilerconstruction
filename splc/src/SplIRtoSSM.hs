@@ -125,7 +125,10 @@ load (TupleFst reg) = loadFromHeap reg $ -1
 load (TupleSnd reg) = loadFromHeap reg 0
 load (ListHd reg)   = loadFromHeap reg $ -1
 load (ListTl reg)   = loadFromHeap reg 0
-
+load (EmptyList)    = do
+    out $ Comment "pushing empty list (0-pointer)"
+    out $ LDC 0
+    increaseStackPointer
 
 loadFromHeap :: SplPseudoRegister -> Size -> IRtoSSMState
 loadFromHeap reg offset = do
@@ -145,14 +148,17 @@ store (Reg name) = do
         Just (offset, Local) -> do
             out $ STL offset
             decreaseStackPointer
-        Just (offset, Global) -> error "do iets met globals"
+        Just (offset, Global) -> do
+            out $ LDR R5
+            out $ STA offset
+            decreaseStackPointer
         -- if not in map, register current location in map
         Nothing -> pushVariable name
 store (TupleFst reg) = storeToHeap reg $ -1
 store (TupleSnd reg) = storeToHeap reg 0
 store (ListHd reg) = storeToHeap reg $ -1
 store (ListTl reg) = storeToHeap reg 0
-
+store (EmptyList)  = error "Can't store to empty list"
 
 storeToHeap :: SplPseudoRegister -> Size -> IRtoSSMState
 storeToHeap reg offset = do
@@ -184,13 +190,13 @@ toSSM (SplBinaryOperation op rd r1 r2) = do
     decreaseStackPointer -- eat two vars
     decreaseStackPointer
     store rd
-toSSM (SplUnaryOperation op (Reg to) (Reg from)) = do
-    loadFromStack from
+toSSM (SplUnaryOperation op to from) = do
+    load from
     case op of
         SplOperatorInvert -> out NOT
         SplOperatorNegate -> out NEG
     decreaseStackPointer
-    pushVariable to
+    store to
 toSSM (SplJump label) = out $ BRA label
 toSSM (SplJumpIf (Reg cond) label) = do
     out $ Comment $ "jump if " ++ cond
@@ -211,8 +217,8 @@ toSSM (SplRet register) = do
     -- return?
     case register of
         Nothing      -> out $ Comment "return void"
-        Just (Reg x) -> do
-            loadFromStack x
+        Just x -> do
+            load x
             out $ STR RR
             decreaseStackPointer
     -- fix stack pointer
@@ -220,24 +226,24 @@ toSSM (SplRet register) = do
     out $ AJS $ -spOffset
     out $ STR MP
     out RET
-toSSM (SplMov (Reg to) (Reg from)) = do
-    loadFromStack from
-    pushVariable to
-toSSM (SplMovImm (Reg to) (SplImmInt i)) = do
+toSSM (SplMov to from) = do
+    load from
+    store to
+toSSM (SplMovImm to (SplImmInt i)) = do
     when (i < toInteger (minBound :: Int32) || i > toInteger (maxBound :: Int32))
         $ error "SSM only supports signed 32-bit integers"
     -- set variable
     out $ LDC (fromInteger i)
-    pushVariable to
-toSSM (SplMovImm (Reg to) (SplImmBool i)) = do
+    store to
+toSSM (SplMovImm to (SplImmBool i)) = do
     -- set variable
     out $ LDC $ if i then 0 else 1
-    pushVariable to
+    store to
 
-toSSM (SplMovImm (Reg to) (SplImmChar c)) = do
+toSSM (SplMovImm to (SplImmChar c)) = do
     -- set variable
     out $ LDC (ord c)
-    pushVariable to
+    store to
 
 toSSM (SplCall name result arguments) = do
     -- pop all arguments
