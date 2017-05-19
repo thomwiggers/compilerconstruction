@@ -47,6 +47,8 @@ spec = do
             parseIdentifier "x3x" `shouldParse` "x3x"
         it "should not parse keywords" $ property $
             forAll (elements reserved) $ \x -> parseIdentifier `shouldFailOn` x
+        it "should parse keywords + suffix" $ property $
+            forAll (elements reserved) $ \x -> parseIdentifier (x ++ "bla") `shouldParse` (x ++ "bla")
         it "should parse words" $
             parseIdentifier "test" `shouldParse` "test"
     describe "basicType" $ do
@@ -243,12 +245,20 @@ spec = do
         it "Should parse function calls with args" $
             parseStmt "fun (a);" `shouldParse`
                 (SplFuncCallStmt "fun" [SplIdentifierExpr "a" SplFieldNone])
+        it "Should parse ifbla = 1;" $
+            parseStmt "ifbla = 1;" `shouldParse` SplAssignmentStmt "ifbla" SplFieldNone literalOne
+    describe "readWord" $ do
+        it "should recognise a word" $
+            parseReadWord "if" "if" `shouldParse` "if"
+        it "should not recognise smaller words in bigger words" $
+            parseReadWord "if" `shouldFailOn` "ifb"
     where
         literalOne = SplIntLiteralExpr 1
         literalTrue = SplBooleanLiteralExpr True
         -- special runParser for succeedsLeaving
         parseSc x = runParser' sc (initialState x)
         parseIdentifier = parse identifier ""
+        parseReadWord w = parse (readWord w) ""
         parseInt = parse int ""
         parseBool = parse bool ""
         parseChar = parse character ""

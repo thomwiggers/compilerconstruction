@@ -206,7 +206,7 @@ parens = between (symbol "(") (symbol ")")
 -- Makes sure we read a bare word, useful for keywords etc.
 readWord :: String -> Parser String
 readWord w = do
-    string w *> notFollowedBy alphaNumChar *> sc
+    try (string w *> notFollowedBy alphaNumChar *> sc)
     return w
 
 -- Reserved words
