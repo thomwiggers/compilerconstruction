@@ -38,7 +38,7 @@ data SSM
     | STH                       -- store a value from the stack to the HP, pushes that address on the stack
     | STMH Size                 -- Store size words from the stack onto the heap
     | STL Offset                -- store a value relative to the MP
-    | STA Offset                -- store a value pointed to by a value on the stack
+    | STA Offset                -- store a value pointed to by a address on the stack
     | STR Register              -- store a value from the stack in a register.
     | AJS Offset                -- adjusts stack pointer
     | LINK Size                 -- does link stuff
