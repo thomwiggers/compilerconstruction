@@ -1,0 +1,7 @@
+main() {
+    var aaron = True;
+    var ifbezocht = False;
+    if (aaron) {
+         ifbezocht = True;
+    }
+}
