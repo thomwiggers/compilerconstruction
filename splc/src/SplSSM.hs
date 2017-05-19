@@ -59,8 +59,6 @@ data SSM
     | GT
     | LE
     | GE
-    | BEQ Label     -- Branch if equals
-    | BNE Label
     | BLT Label
     | BGT Label
     | BLE Label
@@ -121,8 +119,6 @@ instance Show SSM where
     show GT                 = "GT"
     show LE                 = "LE"
     show GE                 = "GE"
-    show (BEQ label)        = "BEQ " ++ label
-    show (BNE label)        = "BNE " ++ label
     show (BLT label)        = "BLT " ++ label
     show (BGT label)        = "BGT " ++ label
     show (BLE label)        = "BLE " ++ label

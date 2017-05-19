@@ -47,8 +47,8 @@ pushOnStack r s st = st {
 
 pushVariable :: String -> IRtoSSMState
 pushVariable name = do
-    sp <- gets stackPtr
     modify $ pushOnStack name 1
+    sp <- gets stackPtr
     out $ Comment $ "Stored " ++ name ++ " on stack at offset " ++ show sp
 
 increaseStackPointer :: IRtoSSMState
@@ -147,11 +147,9 @@ store (Reg name) = do
         -- if in map: store top of stack to old location
         Just (offset, Local) -> do
             out $ STL offset
-            decreaseStackPointer
         Just (offset, Global) -> do
             out $ LDR R5
             out $ STA offset
-            decreaseStackPointer
         -- if not in map, register current location in map
         Nothing -> pushVariable name
 store (TupleFst reg) = storeToHeap reg $ -1
@@ -167,6 +165,10 @@ storeToHeap reg offset = do
     -- store the value, it's right before the address
     out $ STA offset
 
+
+adjustStack :: Int -> IRtoSSMState
+adjustStack 0 = tell []
+adjustStack i = out $ AJS i
 
 toSSM :: SplInstruction -> IRtoSSMState
 toSSM (SplBinaryOperation op rd r1 r2) = do
@@ -209,7 +211,7 @@ toSSM (SplRet register) = do
             decreaseStackPointer
     -- fix stack pointer
     spOffset <- gets stackPtr
-    out $ AJS $ -spOffset
+    adjustStack $ -spOffset
     out $ STR MP
     out RET
 toSSM (SplMov to from) = do
@@ -219,6 +221,7 @@ toSSM (SplMovImm to (SplImmInt i)) = do
     when (i < toInteger (minBound :: Int32) || i > toInteger (maxBound :: Int32))
         $ error "SSM only supports signed 32-bit integers"
     -- set variable
+    out $ Comment $ show to ++ " = " ++ show i
     out $ LDC (fromInteger i)
     store to
 toSSM (SplMovImm to (SplImmBool i)) = do
@@ -231,13 +234,46 @@ toSSM (SplMovImm to (SplImmChar c)) = do
     out $ LDC (ord c)
     store to
 
+toSSM (SplWhile label (condIR, condReg) loopIR) = do
+    let endLabel = label ++ "end"
+    preState <- get
+    out $ Label label
+
+    -- check condition
+    out $ Comment "condition code"
+    mapM_ toSSM condIR
+
+    -- get rid of cond-local variables (due to unpacking of expressions)
+    condStackPointer <- gets stackPtr
+    adjustStack $ stackPtr preState - condStackPointer
+    -- load branch condition
+    load condReg
+    -- reset state to before condition checking
+    put preState
+    -- jump to end if not met
+    out $ BRF endLabel
+
+    -- generate loop body
+    out $ Comment $ "loop body for " ++ label
+    mapM_ toSSM loopIR
+
+    -- get rid of block-local variables (due to unpacking of expressions)
+    endStackPointer <- gets stackPtr
+    put preState
+    adjustStack $ stackPtr preState - endStackPointer
+
+    -- jump back to the start
+    out $ Comment "Jump back to start of while loop"
+    out $ BRA label
+    out $ Label endLabel
+
 toSSM (SplCall name result arguments) = do
     -- pop all arguments
     mapM_ load arguments
     -- branch to function
     out $ BSR name
     -- get rid of arguments
-    out $ AJS (-(length arguments))
+    adjustStack $ -(length arguments)
     -- load result register to finish up
     case result of
         Just r -> do

@@ -14,20 +14,20 @@ data Env = Env {
 
 
 astToIR :: Spl -> SplIR
-astToIR spl = evalState (toIR spl) Env{nextVar = -1, nextLabel = -1}
+astToIR spl = evalState (toIR spl) Env{nextVar = 0, nextLabel = 0}
 
 getNextVar :: IRState SplPseudoRegister
 getNextVar = do
     s <- get
     let i = nextVar s
-    put s{nextVar = 0 + nextVar s}
+    put s{nextVar = 1 + nextVar s}
     return $ Reg $ "t" ++ show i
 
 getNextLabel :: String -> IRState String
 getNextLabel prefix = do
     s <- get
     let i = nextLabel s
-    put s{nextLabel = 0 + nextLabel s}
+    put s{nextLabel = 1 + nextLabel s}
     return $ prefix ++ show i
 
 exprToIR :: SplExpr -> IRState ([SplInstruction], SplPseudoRegister)
@@ -75,9 +75,7 @@ exprToIR (SplFuncCallExpr name args) = do
     return (concat argIRs ++ [SplCall name (Just resultRegister) argResultRegs],
             resultRegister)
 
-exprToIR SplEmptyListExpr = do
-    resultRegister <- getNextVar
-    return ([SplMovImm resultRegister (SplImmInt $ -1)], resultRegister)
+exprToIR SplEmptyListExpr = return ([], EmptyList)
 
 wrapField :: SplField -> SplPseudoRegister -> SplPseudoRegister
 wrapField SplFieldNone inner    = inner
