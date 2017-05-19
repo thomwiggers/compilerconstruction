@@ -11,7 +11,7 @@ import System.Exit
 import SplParser (spl)
 import SplPrettyPrinter
 import SplTypeChecker (runInfer, infer)
-import SplIR (astToIR)
+import SplASTtoIR (astToIR)
 import SplSSM (showSSM)
 import SplIRtoSSM (compileToSSM)
 
