@@ -26,13 +26,20 @@ data SplImm = SplImmInt Integer | SplImmBool Bool | SplImmChar Char
 
 data SplInstruction
     = SplFunction SplLabel [SplPseudoRegister] SplIR
+    -- if   unique   cond              Then  Else
+    | SplIf SplLabel SplPseudoRegister SplIR SplIR
+    -- while   unique   cond  body
+    | SplWhile SplLabel (SplIR, SplPseudoRegister) SplIR
+    -- binop             op                dest              a                 b
     | SplBinaryOperation SplBinaryOperator SplPseudoRegister SplPseudoRegister SplPseudoRegister
+    -- unary op         op               dest              src
     | SplUnaryOperation SplUnaryOperator SplPseudoRegister SplPseudoRegister
     | SplJumpTarget SplLabel
     | SplRet (Maybe SplPseudoRegister)
     | SplJump SplLabel
     | SplJumpIf SplPseudoRegister SplLabel
     | SplJumpIfNot SplPseudoRegister SplLabel
+    -- mov   dest              src
     | SplMov SplPseudoRegister SplPseudoRegister
     | SplMovImm SplPseudoRegister SplImm
     | SplCall SplLabel (Maybe SplPseudoRegister) [SplPseudoRegister]

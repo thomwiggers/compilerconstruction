@@ -101,6 +101,8 @@ replaceName from to instruction = case instruction of
     SplMovImm r i -> SplMovImm (replace r) i
     SplJumpTarget t -> SplJumpTarget t
     SplJump t -> SplJump t
+    w@SplWhile{} -> w
+    i@SplIf{} -> i
     where
     replace x = if x == from then to else x
 
@@ -109,21 +111,17 @@ class ToIR a where
 
 instance ToIR SplStmt where
     toIR (SplWhileStmt cond loop) = do
-        (condIR, compareRegister) <- exprToIR cond
+        condIR <- exprToIR cond
         label <- getNextLabel "while"
-        let labelAfter = label ++ "end"
-        loopIR <- mapM toIR loop
-        return $ (SplJumpTarget label : condIR) ++
-                (SplJumpIfNot compareRegister labelAfter : concat loopIR ++ [SplJump label])
+        loopIR <- concat <$> mapM toIR loop
+        return [SplWhile label condIR loopIR]
 
     toIR (SplIfStmt cond thenStmts elseStmts) = do
         (condIR, compareRegister) <- exprToIR cond
-        elseLabel <- getNextLabel "else"
-        let elseAfterLabel = elseLabel ++ "end"
-        thenIR <- mapM toIR thenStmts
-        elseIR <- mapM toIR elseStmts
-        return $ condIR ++ (SplJumpIfNot compareRegister elseLabel : (concat thenIR ++ [SplJump elseAfterLabel]))
-            ++ (SplJumpTarget elseLabel : concat elseIR) ++ [SplJumpTarget elseAfterLabel]
+        label <- getNextLabel "if"
+        thenIR <- concat <$> mapM toIR thenStmts
+        elseIR <- concat <$> mapM toIR elseStmts
+        return $ condIR ++ [SplIf label compareRegister thenIR elseIR]
 
     toIR (SplAssignmentStmt name field expr) = do
         (exprIR, resultRegister) <- exprToIR expr
@@ -132,8 +130,7 @@ instance ToIR SplStmt where
         return exprIR'
 
     toIR (SplFuncCallStmt name args) = do
-        argIRsResultRegs <- mapM exprToIR args
-        let (argIRs, resultRegs) = unzip argIRsResultRegs
+        (argIRs, resultRegs) <- unzip <$> mapM exprToIR args
         return (concat argIRs ++ [SplCall name Nothing resultRegs])
 
     toIR SplReturnVoidStmt = return [SplRet Nothing]
@@ -153,11 +150,8 @@ instance ToIR SplDecl where
         return $ eIR ++ [SplMov (Reg name) eReg]
 
     toIR (SplDeclFun name argnames _ _ decls stmts) = do
-        declIRs <- mapM toIR decls
-        stmtIRs <- mapM toIR stmts
-        let declIR = concat declIRs
-        let stmtIR = concat stmtIRs
-
+        declIR <- concat <$> mapM toIR decls
+        stmtIR <- concat <$> mapM toIR stmts
         return [SplFunction name (map Reg argnames) (declIR ++ stmtIR)]
 
 instance ToIR SplVarDecl where
