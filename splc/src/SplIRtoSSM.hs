@@ -308,6 +308,8 @@ toSSM (SplFunction label args instrs) = do
         insertArguments [] _ st = st
         insertArguments (Reg x:xs) n st =
             Map.insert x (n, Local) (insertArguments xs (n+1) st)
+        -- functions cannot be defined with accessors like "f(a.hd){}"
+        insertArguments _ _ _  = error "Compiler error: Wrong argument type"
 
 
 isEmptySSM :: [SSM]
