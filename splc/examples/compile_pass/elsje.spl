@@ -1,0 +1,12 @@
+main() {
+    var aaron = False;
+    var thom = True;
+    var ifbezocht = 0;
+    if (aaron) {
+         ifbezocht = 1 + 2;
+    } else {
+        if (thom) {
+            ifbezocht = 2 + 3;
+        }
+    }
+}
