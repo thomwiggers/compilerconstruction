@@ -121,10 +121,10 @@ programToSSM ir = do
 -- gets something from somewhere on the stack (perhaps via a heap pointer) to the top
 load :: SplPseudoRegister -> IRtoSSMState
 load (Reg name)     = loadFromStack name
-load (TupleFst reg) = loadFromHeap reg $ -1
-load (TupleSnd reg) = loadFromHeap reg 0
-load (ListHd reg)   = loadFromHeap reg $ -1
-load (ListTl reg)   = loadFromHeap reg 0
+load (TupleFst reg) = loadFromHeap reg tupleFstHeapOffset
+load (TupleSnd reg) = loadFromHeap reg tupleSndHeapOffset
+load (ListHd reg)   = loadFromHeap reg tupleFstHeapOffset
+load (ListTl reg)   = loadFromHeap reg tupleSndHeapOffset
 load EmptyList      = do
     out $ Comment "pushing empty list (0-pointer)"
     out $ LDC 0
