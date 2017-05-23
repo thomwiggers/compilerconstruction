@@ -200,7 +200,7 @@ toSSM (SplBinaryOperation op rd r1 r2) = do
         SplOperatorNotEqual     -> out NE
         SplOperatorAnd          -> out AND
         SplOperatorOr           -> out OR
-        SplOperatorCons         -> error "don't know how to handle lists yet"
+        SplOperatorCons         -> out $ STMH 2
     decreaseStackPointer -- eat two vars
     decreaseStackPointer
     store rd
