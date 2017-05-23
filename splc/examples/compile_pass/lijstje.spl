@@ -1,0 +1,6 @@
+main () {
+    var één = 1;
+    var legelijst = [];
+    var lijstéén = één + één : één : legelijst;
+    return;
+}

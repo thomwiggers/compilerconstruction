@@ -22,6 +22,7 @@ data Command
     = PrettyPrint InputSrc
     | Analysis InputSrc
     | SSM InputSrc
+    | IR InputSrc
     deriving (Eq, Show)
 
 commandParser :: Parser Command
@@ -31,6 +32,8 @@ commandParser = subparser $
     (command "analysis" (info analysisCommand (progDesc "static analysis and type inference")))
     <>
     (command "ssm" (info compileSSMCommand (progDesc "compile to SSM")))
+    <>
+    command "ir" (info irCommand (progDesc "compile to SPLC IR"))
 
 prettyPrintCommand :: Parser Command
 prettyPrintCommand =  PrettyPrint <$> (parseFile <|> parseStdIn)
@@ -40,6 +43,9 @@ analysisCommand = Analysis <$> (parseFile <|> parseStdIn)
 
 compileSSMCommand :: Parser Command
 compileSSMCommand = SSM <$> (parseFile <|> parseStdIn)
+
+irCommand :: Parser Command
+irCommand = IR <$> (parseFile <|> parseStdIn)
 
 parseFile :: Parser InputSrc
 parseFile = Filename <$> argument str (
@@ -94,6 +100,32 @@ doAnalysis src = do
                     putStrLn $ show scheme
                     exitSuccess
 
+doIR :: InputSrc -> IO ExitCode
+doIR src = do
+    fileContent <- case src of
+        StdInput -> getContents
+        Filename f -> readFile f
+    let filename = case src of
+            StdInput -> "stdin"
+            Filename f -> f
+
+    let parsed = runParser spl filename fileContent
+
+    case parsed of
+        Left err -> do
+            putStr (parseErrorPretty err)
+            exitFailure
+        Right ast -> do
+            let checked = (runInfer . infer) ast
+            case checked of
+                Left err -> do
+                    print err
+                    exitFailure
+                Right _ -> do
+                    let compiled = astToIR ast
+                    print compiled
+                    exitSuccess
+
 doSSM :: InputSrc -> IO ExitCode
 doSSM src = do
     fileContent <- case src of
@@ -127,6 +159,7 @@ main = do
         (PrettyPrint src) -> doPrettyPrint src
         (Analysis src) -> doAnalysis src
         (SSM src) -> doSSM src
+        (IR src) -> doIR src
     where
         theOpts = info (commandParser <**> helper) $
                fullDesc
