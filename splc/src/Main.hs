@@ -13,6 +13,7 @@ import SplPrettyPrinter
 import SplTypeChecker (runInfer, infer)
 import SplASTtoIR (astToIR)
 import SplSSM (showSSM)
+import SplIR (printIR)
 import SplIRtoSSM (compileToSSM)
 
 data InputSrc = StdInput | Filename String
@@ -123,7 +124,7 @@ doIR src = do
                     exitFailure
                 Right _ -> do
                     let compiled = astToIR ast
-                    print compiled
+                    putStr $ printIR compiled
                     exitSuccess
 
 doSSM :: InputSrc -> IO ExitCode

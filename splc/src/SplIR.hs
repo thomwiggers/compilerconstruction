@@ -41,8 +41,32 @@ data SplInstruction
     | SplCall SplLabel (Maybe SplPseudoRegister) [SplPseudoRegister]
     -- make a new tuple     name           left             right
     | SplTupleConstr SplPseudoRegister SplPseudoRegister SplPseudoRegister
-    deriving Show
+
+(+++) :: String -> String -> String
+(+++) a b = a ++ " " ++ b
+
+instance Show SplInstruction where
+    show (SplFunction label args ir) =
+        "SplFunction " ++ label ++ " " ++ show args ++ "\n{\n" ++ printIR ir ++ "\n}"
+    show (SplIf label cond thenIR elseIR) =
+        "SplIf " ++ label ++ " (" ++ show cond ++ ") {\n" ++ printIR thenIR ++
+        "\n}\n" ++ " else {\n" ++ printIR elseIR ++ "\n}"
+    show (SplWhile label (condIR, condReg) blockIR) =
+        "SplWhile" +++ label +++ "{\n" ++ printIR condIR ++ "\n} -> " ++ show condReg ++ " == true then \n{\n" ++
+        printIR blockIR ++ "\n}"
+    show (SplBinaryOperation op r1 r2 r3) =
+        "SplBinaryOperation" +++ show op +++ show r1 +++ show r2 +++ show r3
+    show (SplUnaryOperation op r1 r2) = "SplUnaryOperation" +++ show op +++ show r1 +++ show r2
+    show (SplRet reg) = "SplRet" +++ show reg
+    show (SplMov r1 r2) = "SplMov" +++ show r1 +++ show r2
+    show (SplMovImm r1 i) = "SplMovImm" +++ show r1 +++ show i
+    show (SplCall label res args) = "SplCall" +++ label +++ show args +++ "->" +++ show res
+    show (SplTupleConstr r1 l r) = show r1 +++ "=" +++ "(" ++ show l ++ ", " ++ show r ++ ")"
 
 isFunction :: SplInstruction -> Bool
 isFunction SplFunction{} = True
 isFunction _             = False
+
+printIR :: SplIR -> String
+printIR [] = []
+printIR (x:xs) = show x ++ "\n" ++ printIR xs
