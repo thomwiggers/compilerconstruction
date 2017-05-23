@@ -200,7 +200,7 @@ instance Unify SplTypeR where
             recApply s (x:x':xs) (y:y':ys) = do
                 s1 <- unify x y
                 recApply (s1 `compose` s) ((apply s1 x'):xs) ((apply s1 y'):ys)
-            recApply _ _ _ = fail "Unequal number of arguments"
+            recApply _ _ _ = fail "Function call with the wrong number of arguments"
 
     unify t1 t2 = throwError $ UnificationFail t1 t2
 

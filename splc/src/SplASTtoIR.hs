@@ -52,8 +52,7 @@ exprToIR (SplTupleExpr l r) = do
     (lIR, lResultRegister) <- exprToIR l
     (rIR, rResultRegister) <- exprToIR r
     resultRegister <- getNextVar
-    return (lIR ++ rIR ++ [SplMov (TupleFst resultRegister) lResultRegister,
-                           SplMov (TupleSnd resultRegister) rResultRegister],
+    return (lIR ++ rIR ++ [SplTupleConstr resultRegister lResultRegister rResultRegister],
             resultRegister)
 
 exprToIR (SplIntLiteralExpr i) = do
@@ -95,6 +94,7 @@ replaceName from to instruction = case instruction of
     SplFunction label args ir -> SplFunction label (map replace args) ir
     SplMov r r1 -> SplMov (replace r) (replace r1)
     SplMovImm r i -> SplMovImm (replace r) i
+    SplTupleConstr d l r -> SplTupleConstr (replace d) (replace l) (replace r)
     w@SplWhile{} -> w
     i@SplIf{} -> i
     where

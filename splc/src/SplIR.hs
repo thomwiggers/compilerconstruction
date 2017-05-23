@@ -39,7 +39,9 @@ data SplInstruction
     | SplMov SplPseudoRegister SplPseudoRegister
     | SplMovImm SplPseudoRegister SplImm
     | SplCall SplLabel (Maybe SplPseudoRegister) [SplPseudoRegister]
-    deriving (Show)
+    -- make a new tuple     name           left             right
+    | SplTupleConstr SplPseudoRegister SplPseudoRegister SplPseudoRegister
+    deriving Show
 
 isFunction :: SplInstruction -> Bool
 isFunction SplFunction{} = True

@@ -139,6 +139,18 @@ loadFromHeap reg offset = do
     out $ LDA offset
 
 
+tupleFstHeapOffset :: Int
+tupleFstHeapOffset = -1
+
+tupleSndHeapOffset :: Int
+tupleSndHeapOffset = 0
+
+listHdHeapOffset :: Int
+listHdHeapOffset = -1
+
+listTlHeapOffset :: Int
+listTlHeapOffset = 0
+
 store :: SplPseudoRegister -> IRtoSSMState
 store (Reg name) = do
     -- look up name in stack administration
@@ -151,11 +163,12 @@ store (Reg name) = do
             out $ STA offset
         -- if not in map, register current location in map
         Nothing -> pushVariable name
-store (TupleFst reg) = storeToHeap reg $ -1
-store (TupleSnd reg) = storeToHeap reg 0
-store (ListHd reg) = storeToHeap reg $ -1
-store (ListTl reg) = storeToHeap reg 0
+store (TupleFst reg) = storeToHeap reg tupleFstHeapOffset
+store (TupleSnd reg) = storeToHeap reg tupleSndHeapOffset
+store (ListHd reg) = storeToHeap reg listHdHeapOffset
+store (ListTl reg) = storeToHeap reg listTlHeapOffset
 store EmptyList    = error "Can't store to empty list"
+
 
 storeToHeap :: SplPseudoRegister -> Size -> IRtoSSMState
 storeToHeap reg offset = do
@@ -233,6 +246,17 @@ toSSM (SplMovImm to (SplImmChar c)) = do
     out $ LDC (ord c)
     store to
 
+toSSM (SplTupleConstr dest left right) = do
+    -- load left and right to top of stack
+    load left
+    load right
+    -- store to heap
+    out $ STMH 2
+    decreaseStackPointer -- pops two
+    decreaseStackPointer
+    -- store address to dest
+    store dest
+
 toSSM (SplWhile label (condIR, condReg) loopIR) = do
     let endLabel = label ++ "end"
     preState <- get
@@ -267,6 +291,7 @@ toSSM (SplWhile label (condIR, condReg) loopIR) = do
     out $ Label endLabel
 
 toSSM (SplIf label condReg thenIR elseIR) = do
+    out $ Label label
     preState <- get
     let elseLabel = label ++ "else"
     let endifLabel = label ++ "end"
@@ -303,7 +328,11 @@ toSSM (SplCall name result arguments) = do
     -- branch to function
     out $ BSR name
     -- get rid of arguments
+    out $ Comment "Drop arguments from stack"
     adjustStack $ -(length arguments)
+    -- decrease stack pointer by the arguments we're removing
+    modify $ \st -> st { stackPtr = stackPtr st - length arguments }
+
     -- load result register to finish up
     case result of
         Just r -> do
@@ -337,7 +366,7 @@ toSSM (SplFunction label args instrs) = do
     out $ LDRR MP SP
 
     -- negative offset from MP
-    let argumentOffset = -2  - length args
+    let argumentOffset = -1  - length args
     let newScope = insertArguments args argumentOffset $ globalMap currentState
     let scopedState = currentState {
         scopedMap = newScope,
