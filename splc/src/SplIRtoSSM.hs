@@ -228,6 +228,7 @@ toSSM (SplRet register) = do
     out RET
 toSSM (SplMov to from) = do
     load from
+    decreaseStackPointer
     store to
 toSSM (SplMovImm to (SplImmInt i)) = do
     when (i < toInteger (minBound :: Int32) || i > toInteger (maxBound :: Int32))

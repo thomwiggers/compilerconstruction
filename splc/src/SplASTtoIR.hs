@@ -31,7 +31,9 @@ getNextLabel prefix = do
     return $ prefix ++ show i
 
 exprToIR :: SplExpr -> IRState ([SplInstruction], SplPseudoRegister)
-exprToIR (SplIdentifierExpr name field) = return ([], wrapField field $ Reg name)
+exprToIR (SplIdentifierExpr name field) = do
+    resultRegister <- getNextVar
+    return ([SplMov resultRegister (wrapField field $ Reg name)], resultRegister)
 
 exprToIR (SplBinaryExpr op e0 e1) = do
     (e0IR, e0ResultRegister) <- exprToIR e0
@@ -74,7 +76,9 @@ exprToIR (SplFuncCallExpr name args) = do
     return (concat argIRs ++ [SplCall name (Just resultRegister) argResultRegs],
             resultRegister)
 
-exprToIR SplEmptyListExpr = return ([], EmptyList)
+exprToIR SplEmptyListExpr = do
+    resultRegister <- getNextVar
+    return ([SplMov resultRegister EmptyList], resultRegister)
 
 wrapField :: SplField -> SplPseudoRegister -> SplPseudoRegister
 wrapField SplFieldNone inner    = inner
@@ -139,10 +143,7 @@ instance ToIR Spl where
         return $ concat z
 
 instance ToIR SplDecl where
-    toIR (SplDeclVar (SplVarDecl _ name expr)) = do
-        (eIR, eReg) <- exprToIR expr
-        return $ eIR ++ [SplMov (Reg name) eReg]
-
+    toIR (SplDeclVar decl) = toIR decl
     toIR (SplDeclFun name argnames _ _ decls stmts) = do
         declIR <- concat <$> mapM toIR decls
         stmtIR <- concat <$> mapM toIR stmts
