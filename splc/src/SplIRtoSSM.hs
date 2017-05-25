@@ -73,8 +73,9 @@ loadFromStack name = do
             out $ Comment $ "Loading " ++ name ++ " from offset " ++ show offset
             out $ LDL offset
         Global -> do
-            out $ Comment "FIXME: globals not yet implemented"
-            out HALT
+            out $ Comment $ "Loading global " ++ name ++ " from offset " ++ show offset
+            out $ LDR R5
+            out $ LDA offset
     increaseStackPointer
 
 getStackVariable :: String -> SSMState -> (Offset, Scope)

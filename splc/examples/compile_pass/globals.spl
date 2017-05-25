@@ -1,0 +1,13 @@
+var a = 1;
+var towel = 42;
+Int answer = towel;
+
+bla() {
+    answer = a + towel;
+}
+
+main () {
+    printInt(answer);
+    bla();
+    printInt(answer);
+}
