@@ -75,8 +75,8 @@ data SplBinaryOperator = SplOperatorAdd
                        | SplOperatorCons
     deriving (Eq)
 
-data SplUnaryOperator = SplOperatorInvert
-                      | SplOperatorNegate
+data SplUnaryOperator = SplOperatorInvert -- bools
+                      | SplOperatorNegate -- ints
     deriving (Show, Eq)
 
 instance Show SplBinaryOperator where
