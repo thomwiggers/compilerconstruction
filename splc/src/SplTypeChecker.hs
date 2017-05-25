@@ -356,6 +356,10 @@ instance Inferer SplRetType where
 instance Inferer SplVarDecl where
     -- <type> <name> = <expr>;
     infer (SplVarDecl t name expr) = do
+        (TypeEnv env) <- gets typeEnv
+        let varExists = Map.member (Var, name) env
+        when varExists
+            (throwError $ ConflictingDeclaration name)
         -- get declared type
         (_, t') <- infer t >>= unsimple
         (s1, et) <- infer expr >>= unsimple
