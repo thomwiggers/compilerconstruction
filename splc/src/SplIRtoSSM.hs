@@ -110,6 +110,7 @@ programToSSM ir = do
     -- would need to check if they're used
     tell isEmptySSM
     tell printSSM
+    tell printIntSSM
 
     out HALT
 
@@ -411,5 +412,13 @@ printSSM = [
         -- gets a character as an argument at the top of the stackPtr before the return address
         LDS $ -1,
         TRAP PopPrintChar,
+        RET
+    ]
+
+printIntSSM :: [SSM]
+printIntSSM = [
+        Label "printInt",
+        LDS $ -1,
+        TRAP PopPrintInt,
         RET
     ]

@@ -31,7 +31,7 @@ varDecl = do
 funDecl :: Parser SplDecl
 funDecl = do
     name <- identifier
-    when (name == "print" || name == "isEmpty") $
+    when (name == "print" || name == "printInt" || name == "isEmpty") $
         fail $ name ++ " is a reserved function name"
 
     args <- parens $ identifier `sepBy` symbol ","

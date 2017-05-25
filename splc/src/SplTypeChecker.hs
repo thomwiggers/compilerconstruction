@@ -109,9 +109,13 @@ emptyTypeEnv = TypeEnv $ Map.fromList [((Var, "isEmpty"), Forall [TV "isEmptyVar
                                                 (SplTypeConst SplBool)
                                             )
                                         ),
-                                       ((Var, "print"), Forall [TV "printVar"]
-                                            (SplTypeFunction [SplTypeVar $ TV "printVar"] SplVoid)
-                                       )]
+                                       ((Var, "print"), Forall []
+                                            (SplTypeFunction [SplTypeConst SplChar] SplVoid)
+                                       ),
+                                       ((Var, "printInt"), Forall []
+                                            (SplTypeFunction [SplTypeConst SplInt] SplVoid)
+                                       )
+                                       ]
 
 initEnv :: SplEnv
 initEnv = SplEnv {nextFreshVar = 0, typeEnv = emptyTypeEnv, returnBlocks = [], returnType = undefined}
