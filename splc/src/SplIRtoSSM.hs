@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -fno-warn-unused-matches #-}
 module SplIRtoSSM where
 
 import           Control.Monad.State
