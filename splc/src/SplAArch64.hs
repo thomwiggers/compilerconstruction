@@ -15,7 +15,7 @@ data Address = Address Register Offset
 instance Show Address where
     show (Address r o) = "[" ++ show r ++ ", #" ++ show o ++ "]"
 
-data Condition = Negative | Carry | Overflow | Zero
+data Condition = Equal | NotEqual | Greater | GreaterEqual | Less | LessEqual
     deriving (Show, Eq)
 
 instance Show Register where
@@ -41,8 +41,10 @@ data AArch64Instruction
     | AND Register Register Register
     | OR Register Register Register
     | XOR Register Register Register
-    | CMP Register Register
+    | CMP          Register Register
+    | MOV Register Register
     | BranchConditional Condition Label
+    | BranchAlways Label
     | BranchLink Label
     | LDR Register Address      -- ldr x0, [sp, #16]
     | STR Register Address      -- str x0, [sp, #12]

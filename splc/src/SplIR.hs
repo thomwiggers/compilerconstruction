@@ -47,7 +47,7 @@ data SplInstruction
 
 instance Show SplInstruction where
     show (SplFunction label args ir) =
-        "SplFunction " ++ label ++ " " ++ show args ++ "\n{\n" ++ printIR ir ++ "\n}"
+        "SplFunction " ++ label +++ show args ++ "\n{\n" ++ printIR ir ++ "\n}"
     show (SplIf label cond thenIR elseIR) =
         "SplIf " ++ label ++ " (" ++ show cond ++ ") {\n" ++ printIR thenIR ++
         "\n}\n" ++ " else {\n" ++ printIR elseIR ++ "\n}"
