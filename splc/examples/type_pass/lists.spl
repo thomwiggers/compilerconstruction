@@ -23,8 +23,8 @@ product (list) :: [Int] -> Int
 main () :: Void
 {
     [Int] list = 1:3:5:[];
-    print(sum(list));
-    print(product(list));
+    printInt(sum(list));
+    printInt(product(list));
 }
 
 // vim: ft=c
