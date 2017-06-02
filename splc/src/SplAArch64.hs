@@ -7,7 +7,7 @@ type Size = Int
 type Label = String
 
 data Register = X Int | FP | LR | SP | PR String | Imm Int
-    deriving Eq
+    deriving (Eq, Ord)
 
 data Address = Address Register Offset
     deriving Eq

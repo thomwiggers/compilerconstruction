@@ -54,6 +54,9 @@ toAArch64 (SplRet (Just (Reg r)))
 
 -- functions
 toAArch64 (SplFunction label [] ir) = do
+    -- FIXME no arguments
+    -- Make sure to first copy x0, .. x3 to temps to not clash
+    -- with register allocation of the return register etc?
     functionCode <- concat <$> mapM toAArch64 ir
     return [BasicBlock $ Label label : functionCode ++ [RET]]
 

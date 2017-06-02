@@ -47,13 +47,13 @@ data SplInstruction
 
 instance Show SplInstruction where
     show (SplFunction label args ir) =
-        "SplFunction " ++ label +++ show args ++ "\n{\n" ++ printIR ir ++ "\n}"
+        "SplFunction " ++ label +++ show args ++ "\n{\n" ++ printList ir ++ "\n}"
     show (SplIf label cond thenIR elseIR) =
-        "SplIf " ++ label ++ " (" ++ show cond ++ ") {\n" ++ printIR thenIR ++
-        "\n}\n" ++ " else {\n" ++ printIR elseIR ++ "\n}"
+        "SplIf " ++ label ++ " (" ++ show cond ++ ") {\n" ++ printList thenIR ++
+        "\n}\n" ++ " else {\n" ++ printList elseIR ++ "\n}"
     show (SplWhile label (condIR, condReg) blockIR) =
-        "SplWhile" +++ label +++ "{\n" ++ printIR condIR ++ "\n} -> " ++ show condReg ++ " == true then \n{\n" ++
-        printIR blockIR ++ "\n}"
+        "SplWhile" +++ label +++ "{\n" ++ printList condIR ++ "\n} -> " ++ show condReg ++ " == true then \n{\n" ++
+        printList blockIR ++ "\n}"
     show (SplBinaryOperation op r1 r2 r3) =
         "SplBinaryOperation" +++ show op +++ show r1 +++ show r2 +++ show r3
     show (SplUnaryOperation op r1 r2) = "SplUnaryOperation" +++ show op +++ show r1 +++ show r2
@@ -67,6 +67,6 @@ isFunction :: SplInstruction -> Bool
 isFunction SplFunction{} = True
 isFunction _             = False
 
-printIR :: SplIR -> String
-printIR [] = []
-printIR (x:xs) = show x ++ "\n" ++ printIR xs
+printList :: (Show a) => [a] -> String
+printList [] = []
+printList (x:xs) = show x ++ "\n" ++ printList xs

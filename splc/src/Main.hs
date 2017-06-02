@@ -13,8 +13,10 @@ import SplPrettyPrinter
 import SplTypeChecker (runInfer, infer)
 import SplASTtoIR (astToIR)
 import SplSSM (showSSM)
-import SplIR (printIR)
+import SplIR (printList)
 import SplIRtoSSM (compileToSSM)
+import SplIRtoAArch64
+import SplAArch64Allocator
 
 data InputSrc = StdInput | Filename String
     deriving (Eq, Show)
@@ -24,6 +26,7 @@ data Command
     | Analysis InputSrc
     | SSM InputSrc
     | IR InputSrc
+    | IRA InputSrc
     deriving (Eq, Show)
 
 commandParser :: Parser Command
@@ -35,6 +38,8 @@ commandParser = subparser $
     (command "ssm" (info compileSSMCommand (progDesc "compile to SSM")))
     <>
     command "ir" (info irCommand (progDesc "compile to SPLC IR"))
+    <>
+    command "ira" (info iraCommand $ progDesc "Show annotated generated AArch64 code")
 
 prettyPrintCommand :: Parser Command
 prettyPrintCommand =  PrettyPrint <$> (parseFile <|> parseStdIn)
@@ -47,6 +52,9 @@ compileSSMCommand = SSM <$> (parseFile <|> parseStdIn)
 
 irCommand :: Parser Command
 irCommand = IR <$> (parseFile <|> parseStdIn)
+
+iraCommand :: Parser Command
+iraCommand = IRA <$> (parseFile <|> parseStdIn)
 
 parseFile :: Parser InputSrc
 parseFile = Filename <$> argument str (
@@ -124,7 +132,34 @@ doIR src = do
                     exitFailure
                 Right _ -> do
                     let compiled = astToIR ast
-                    putStr $ printIR compiled
+                    putStr $ printList compiled
+                    exitSuccess
+
+doIRA :: InputSrc -> IO ExitCode
+doIRA src = do
+    fileContent <- case src of
+        StdInput -> getContents
+        Filename f -> readFile f
+    let filename = case src of
+            StdInput -> "stdin"
+            Filename f -> f
+
+    let parsed = runParser spl filename fileContent
+
+    case parsed of
+        Left err -> do
+            putStr (parseErrorPretty err)
+            exitFailure
+        Right ast -> do
+            let checked = (runInfer . infer) ast
+            case checked of
+                Left err -> do
+                    print err
+                    exitFailure
+                Right _ -> do
+                    let compiled = astToIR ast
+                    let aarchCode = compileToAArch64 compiled
+                    putStr $ printList $ annotateInstructions aarchCode
                     exitSuccess
 
 doSSM :: InputSrc -> IO ExitCode
@@ -161,6 +196,7 @@ main = do
         (Analysis src) -> doAnalysis src
         (SSM src) -> doSSM src
         (IR src) -> doIR src
+        IRA src -> doIRA src
     where
         theOpts = info (commandParser <**> helper) $
                fullDesc
