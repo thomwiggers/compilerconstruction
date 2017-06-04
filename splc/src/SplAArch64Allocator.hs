@@ -1,4 +1,4 @@
-module SplAArch64Allocator (module SplAArch64Allocator) where
+module SplAArch64Allocator (allocateRegisters) where
 
 import Control.Arrow (second)
 import           Control.Monad.State
@@ -12,6 +12,10 @@ import           SplAArch64
 
 -- instructions with the registers that are live *after* that point
 type AnnotatedInstructions = [(AArch64Instruction, Set.Set Register)]
+
+allocateRegisters :: [AArch64Instruction] -> [AArch64Instruction]
+allocateRegisters instrs =
+    evalState (assignRegisters $ annotateInstructions instrs) emptyAllocatorState
 
 annotateInstructions :: [AArch64Instruction] -> AnnotatedInstructions
 annotateInstructions z =
@@ -193,4 +197,7 @@ assignRegistersToInstruction RET = return RET
 assignRegistersToInstruction NOP = return NOP
 assignRegistersToInstruction c@Comment{} = return c
 assignRegistersToInstruction l@Label{} = return l
-assignRegistersToInstruction BasicBlock{} = error "watwat"
+assignRegistersToInstruction (BasicBlock instrs) = do
+    -- todo: make sure spill code is generated in the right place.
+    let annotatedInstrs = annotateInstructions instrs
+    BasicBlock <$> assignRegisters annotatedInstrs
