@@ -86,7 +86,10 @@ library
                       SplTypeChecker,
                       SplPrettyPrinter,
                       SplIR,
-                      SplIRtoSSM
+                      SplIRtoSSM,
+                      SplIRtoAArch64,
+                      SplAArch64,
+                      SplAArch64Allocator
 
 executable splc
   -- .hs or .lhs file containing the Main module.

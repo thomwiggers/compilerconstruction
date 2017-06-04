@@ -35,7 +35,7 @@ toAArch64 (SplBinaryOperation SplOperatorDivide (Reg rd) (Reg rn) (Reg rm))
 
 -- unary operations:
 toAArch64 (SplUnaryOperation SplOperatorInvert (Reg rd) (Reg rm))
-    = return [XOR (PR rd) (PR rm) (Imm 1)]
+    = return [EOR (PR rd) (PR rm) (Imm 1)]
 toAArch64 (SplUnaryOperation SplOperatorNegate (Reg rd) (Reg rm))
     = return [NEG (PR rd) (PR rm)]
 

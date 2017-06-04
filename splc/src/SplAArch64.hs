@@ -40,7 +40,7 @@ data AArch64Instruction
     | MSUB Register Register Register Register -- Rd = Ra - Rn * Rm (note Ra is last register!)
     | AND Register Register Register
     | OR Register Register Register
-    | XOR Register Register Register
+    | EOR Register Register Register
     | CMP          Register Register
     | MOV Register Register
     | BranchConditional Condition Label
