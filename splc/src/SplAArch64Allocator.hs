@@ -1,4 +1,4 @@
-module SplAArch64Allocator (allocateRegisters) where
+module SplAArch64Allocator (allocateRegisters, annotateInstructions) where
 
 import Control.Arrow (second)
 import           Control.Monad.State
