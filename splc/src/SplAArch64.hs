@@ -18,6 +18,14 @@ instance Show Address where
 data Condition = Equal | NotEqual | Greater | GreaterEqual | Less | LessEqual
     deriving (Show, Eq)
 
+asmCond :: Condition -> String
+asmCond Equal        = "EQ"
+asmCond NotEqual     = "NE"
+asmCond Greater      = "GT"
+asmCond GreaterEqual = "GE"
+asmCond Less         = "LT"
+asmCond LessEqual    = "LE"
+
 instance Show Register where
     show (X a) = if a < 0 || a > 28
                     then fail "BAD REGISTER x" ++ show a
@@ -42,6 +50,7 @@ data AArch64Instruction
     | OR Register Register Register
     | EOR Register Register Register
     | CMP          Register Register
+    | CSET Register Condition
     | MOV Register Register
     | BranchConditional Condition Label
     | BranchAlways Label
@@ -53,4 +62,36 @@ data AArch64Instruction
     | Comment String
     | Label Label
     | BasicBlock [AArch64Instruction]
-    deriving (Show, Eq)
+    deriving Eq
+
+(+++) :: (Show b) => String -> b -> String
+(+++) a b = a ++ " " ++ show b
+
+-- operatornaam is sws ellende: moet symbol zijn, komma mag niet
+(++<) :: (Show b) => String -> b -> String
+(++<) a b = a ++ ", " ++ show b
+
+instance Show AArch64Instruction where
+    show (ADD r a b)           = "ADD" +++ r ++< a ++< b
+    show (MUL r a b)           = "MUL" +++ r ++< a ++< b
+    show (SDIV r a b)          = "SDIV" +++ r ++< a ++< b
+    show (SUB r a b)           = "SUB" +++ r ++< a ++< b
+    show (NEG r a)             = "NEG" +++ r ++< a
+    show (MSUB r a b c)        = "MSUB" +++ r ++< a ++< b ++< c
+    show (AND r a b)           = "AND"  +++ r ++< a ++< b
+    show (OR r a b)            = "OR" +++ r ++< a ++< b
+    show (EOR r a b)           = "EOR" +++ r ++< a ++< b
+    show (CMP a b)             = "CMP" +++ a ++< b
+    show (CSET a c)            = "CSET" +++ a ++< c
+    show (MOV r a)             = "MOV" +++ r ++< a
+    show (BranchConditional cond label)
+                               = "B." ++ asmCond cond ++ " " ++ label
+    show (BranchAlways label)  = "B " ++ label
+    show (BranchLink label)    = "BL " ++ label
+    show (LDR r a)             = "LDR" +++ r ++< a
+    show (STR r a)             = "STR" +++ r ++< a
+    show RET                   = "RET"
+    show NOP                   = "NOP"
+    show (Comment str)         = "// " ++ str
+    show (Label name)          = name ++ ":"
+    show (BasicBlock instrs)   = foldr (\a b -> show a ++ "\n" ++ b) "" instrs

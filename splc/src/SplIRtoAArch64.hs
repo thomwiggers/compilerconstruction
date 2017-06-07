@@ -31,6 +31,8 @@ toAArch64 (SplBinaryOperation SplOperatorMultiply (Reg rd) (Reg rn) (Reg rm))
     = return [MUL (PR rd) (PR rn) (PR rm)]
 toAArch64 (SplBinaryOperation SplOperatorDivide (Reg rd) (Reg rn) (Reg rm))
     = return [SDIV (PR rd) (PR rn) (PR rm)]
+toAArch64 (SplBinaryOperation SplOperatorEqual (Reg rd) (Reg rn) (Reg rm))
+    = return [CMP (PR rn) (PR rm), CSET (PR rd) Equal]
 -- FIXME rest of binops
 
 -- unary operations:
