@@ -31,9 +31,8 @@ getNextLabel prefix = do
     return $ prefix ++ show i
 
 exprToIR :: SplExpr -> IRState ([SplInstruction], SplPseudoRegister)
-exprToIR (SplIdentifierExpr name field) = do
-    resultRegister <- getNextVar
-    return ([SplMov resultRegister (wrapField field $ Reg name)], resultRegister)
+exprToIR (SplIdentifierExpr name field) =
+    return ([], wrapField field $ Reg name)
 
 exprToIR (SplBinaryExpr op e0 e1) = do
     (e0IR, e0ResultRegister) <- exprToIR e0
