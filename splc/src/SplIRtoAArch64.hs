@@ -3,6 +3,8 @@ module SplIRtoAArch64 where
 import SplAST (SplBinaryOperator(..), SplUnaryOperator(..))
 import SplIR
 import SplAArch64
+import SplAArch64Allocator
+
 import Control.Monad.State
 import Data.Char (ord)
 
@@ -16,7 +18,7 @@ emptyAArch64State = AArch64State {stackPtr = 0}
 type IRtoAArch64State = State AArch64State [AArch64Instruction]
 
 compileToAArch64 :: SplIR -> [AArch64Instruction]
-compileToAArch64 ir = evalState (programToAArch64 ir) emptyAArch64State
+compileToAArch64 ir = allocateRegisters $ evalState (programToAArch64 ir) emptyAArch64State
 
 programToAArch64 :: SplIR -> IRtoAArch64State
 programToAArch64 ir = concat <$> mapM toAArch64 ir
@@ -57,7 +59,7 @@ toAArch64 (SplRet (Just (Reg r)))
 -- functions
 toAArch64 (SplFunction label [] ir) = do
     -- FIXME no arguments
-    -- Make sure to first copy x0, .. x3 to temps to not clash
+    -- Make sure to first copy x0, .. x7 to temps to not clash
     -- with register allocation of the return register etc?
     functionCode <- concat <$> mapM toAArch64 ir
     return [BasicBlock $ Label label : functionCode ++ [RET]]
