@@ -16,5 +16,6 @@ main() {
     (Int, Int) bla = foo(1);
     bla = transpose(bla, bla);
     bla = scale(bla, 2);
+    printInt(bla.fst);
     return;
 }
