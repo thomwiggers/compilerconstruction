@@ -159,7 +159,8 @@ doIRA src = do
                 Right _ -> do
                     let compiled = astToIR ast
                     let aarchCode = compileToAArch64 compiled
-                    putStr $ printList $ annotateInstructions aarchCode
+                    --putStr $ printList $ annotateInstructions aarchCode
+                    putStr $ printList $ aarchCode
                     exitSuccess
 
 doSSM :: InputSrc -> IO ExitCode

@@ -84,14 +84,16 @@ output (BasicBlock _)      = Set.empty -- for now we assume this can be empty
 data AllocatorState = AllocatorState {
         freeRegisters :: [Register],
         usedRegisters :: [Register],
-        prToRegMap    :: Map.Map String Register
+        prToRegMap    :: Map.Map String Register,
+        parentRegisters :: [Register] -- registers to keep while in a block
     }
 
 emptyAllocatorState :: AllocatorState
 emptyAllocatorState = AllocatorState {
         freeRegisters = [X i | i <- [0..28]],
         usedRegisters = [],
-        prToRegMap = Map.empty
+        prToRegMap = Map.empty,
+        parentRegisters = []
     }
 
 popFreeRegister :: State AllocatorState Register
@@ -159,7 +161,8 @@ assignRegisters ((instruction, inputRegs) : xs) = do
     regMap <- gets prToRegMap
     let inputHWRegs = Set.toList $ Set.map (findRegisterInMap regMap) inputRegs
     currentlyUsed <- gets usedRegisters
-    let obsoleteRegs = currentlyUsed \\ inputHWRegs
+    parentRegs <- gets parentRegisters
+    let obsoleteRegs = (currentlyUsed \\ inputHWRegs) \\ parentRegs
     dropRegisters obsoleteRegs
     -- drop the PRs from the map, whose hw regs we've just deleted
     modify $ \st -> st{prToRegMap = Map.filter (`notElem` obsoleteRegs) regMap}
@@ -203,4 +206,16 @@ assignRegistersToInstruction l@Label{} = return l
 assignRegistersToInstruction (BasicBlock instrs) = do
     -- todo: make sure spill code is generated in the right place.
     let annotatedInstrs = annotateInstructions instrs
-    BasicBlock <$> assignRegisters annotatedInstrs
+    -- get the currently in-use registers and registers from block above (parent)
+    -- we need the parent's registers to make sure we don't throw them out in this block
+    currentRegisters <- gets usedRegisters
+    parentRegs <- gets parentRegisters
+    modify $ \st -> st{parentRegisters = currentRegisters }
+
+    -- assign registers in this block
+    assignedInstrs <- assignRegisters annotatedInstrs
+
+    -- put back parent state
+    modify $ \st -> st{parentRegisters = parentRegs }
+
+    return $ BasicBlock assignedInstrs
