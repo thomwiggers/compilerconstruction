@@ -35,7 +35,13 @@ compileToAArch64 ir =
         program = allocateRegisters $ evalState (programToAArch64 ir) emptyAArch64State
 
 programToAArch64 :: SplIR -> IRtoAArch64State
-programToAArch64 ir = concat <$> mapM toAArch64 ir
+programToAArch64 ir = do
+    let decls = filter (not . isFunction) ir
+    let functions = filter isFunction ir
+    globalCode <- concat <$> mapM toAArch64 decls
+    functionCode <- concat <$> mapM toAArch64 functions
+
+    return (globalCode ++ functionCode)
 
 toAArch64 :: SplInstruction -> IRtoAArch64State
 -- binary operations
