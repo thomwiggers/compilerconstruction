@@ -62,8 +62,13 @@ toAArch64 (SplMov (Reg rd) (Reg rn)) = return [MOV (PR rd) (PR rn)]
 toAArch64 (SplMovImm (Reg rd) (SplImmInt i)) = return [MOV (PR rd) (Imm (fromInteger i))]
 toAArch64 (SplMovImm (Reg rd) (SplImmBool b))
     = return [MOV (PR rd) (Imm $ if b then 1 else 0)]
-toAArch64 (SplMovImm (Reg rd) (SplImmChar c))
-    = return [MOV (PR rd) (Imm (ord c))]
+toAArch64 (SplMovImm (Reg rd) (SplImmChar c)) = do
+    let charCode = ord c
+    if charCode < 65536 -- < 2^16
+        then return [MOV (PR rd) (Imm charCode)]
+        -- encode higher unicode characters by adding up two 16-bit imms
+        else return [MOV (PR rd) (Imm (charCode `mod` 65536)),
+                     MOVK (PR rd) (Imm (charCode - (charCode `mod` 65536)))]
 
 -- return
 toAArch64 (SplRet Nothing) = return [RET]

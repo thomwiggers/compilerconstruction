@@ -56,6 +56,7 @@ data AArch64Instruction
     | CMP          Register Register
     | CSET Register Condition
     | MOV Register Register
+    | MOVK Register Register
     | BranchConditional Condition Label
     | BranchAlways Label
     | BranchLink Label
@@ -88,6 +89,7 @@ instance Show AArch64Instruction where
     show (CMP a b)             = "CMP" +++ a ++< b
     show (CSET a c)            = "CSET" +++ a ++< c
     show (MOV r a)             = "MOV" +++ r ++< a
+    show (MOVK r a)            = "MOVK" +++ r ++< a
     show (BranchConditional cond label)
                                = "B." ++ asmCond cond ++ " " ++ label
     show (BranchAlways label)  = "B " ++ label
