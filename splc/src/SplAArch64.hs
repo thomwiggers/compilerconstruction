@@ -6,8 +6,12 @@ type Offset = Int
 type Size = Int
 type Label = String
 
+-- see http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf
+            -- 0-28     29   30   '31'
 data Register = X Int | FP | LR | SP | PR String | Imm Int
     deriving (Eq, Ord)
+
+-- callee-saved: r19-r29, sp
 
 data Address = Address Register Offset
     deriving Eq
@@ -95,3 +99,8 @@ instance Show AArch64Instruction where
     show (Comment str)         = "// " ++ str
     show (Label name)          = name ++ ":"
     show (BasicBlock instrs)   = foldr (\a b -> show a ++ "\n" ++ b) "" instrs
+
+
+functionName :: String -> String
+functionName "main" = "_splmain"
+functionName a = a

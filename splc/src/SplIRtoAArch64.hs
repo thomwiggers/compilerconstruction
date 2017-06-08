@@ -5,6 +5,8 @@ import SplIR
 import SplAArch64
 import SplAArch64Allocator
 
+import qualified SplAArch64StdLib as StdLib
+
 import Control.Monad.State
 import Data.Char (ord)
 
@@ -17,8 +19,20 @@ emptyAArch64State = AArch64State {stackPtr = 0}
 
 type IRtoAArch64State = State AArch64State [AArch64Instruction]
 
-compileToAArch64 :: SplIR -> [AArch64Instruction]
-compileToAArch64 ir = allocateRegisters $ evalState (programToAArch64 ir) emptyAArch64State
+compileToAArch64 :: SplIR -> String
+compileToAArch64 ir =
+    StdLib.programPreamble ++ "\n\n" ++
+    -- function to set locale and call initGlobals
+    StdLib.initFunction ++ "\n\n" ++
+    -- program source code
+    printList program ++ "\n\n" ++
+    -- stdlib
+    StdLib.print ++ "\n\n" ++
+    StdLib.printInt ++ "\n\n" ++
+    StdLib.isEmpty ++ "\n\n" ++
+    StdLib.constants ++ "\n"
+    where
+        program = allocateRegisters $ evalState (programToAArch64 ir) emptyAArch64State
 
 programToAArch64 :: SplIR -> IRtoAArch64State
 programToAArch64 ir = concat <$> mapM toAArch64 ir
@@ -62,7 +76,7 @@ toAArch64 (SplFunction label [] ir) = do
     -- Make sure to first copy x0, .. x7 to temps to not clash
     -- with register allocation of the return register etc?
     functionCode <- concat <$> mapM toAArch64 ir
-    return [BasicBlock $ Label label : functionCode ++ [RET]]
+    return [BasicBlock $ Label (functionName label) : functionCode ++ [RET]]
 
 -- if
 toAArch64 (SplIf label (Reg cond) thenIR elseIR) = do
