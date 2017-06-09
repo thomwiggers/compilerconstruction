@@ -16,6 +16,9 @@ data Register = X Int | FP | LR | SP | PR String | Imm Int
 data Address = Address Register Offset
     deriving Eq
 
+wordLength :: Int
+wordLength = 8
+
 instance Show Address where
     show (Address r o) = "[" ++ show r ++ ", #" ++ show o ++ "]"
 
@@ -62,6 +65,8 @@ data AArch64Instruction
     | BranchLink Label
     | LDR Register Address      -- ldr x0, [sp, #16]
     | STR Register Address      -- str x0, [sp, #12]
+    | ADRP Register Label
+    | AddNamedOffset Register Register Label
     | RET
     | NOP
     | Comment String
@@ -96,6 +101,8 @@ instance Show AArch64Instruction where
     show (BranchLink label)    = "BL " ++ label
     show (LDR r a)             = "LDR" +++ r ++< a
     show (STR r a)             = "STR" +++ r ++< a
+    show (ADRP r n)            = "ADRP" +++ r ++ ", " ++ n
+    show (AddNamedOffset r a n) = "ADD" +++ r ++< a ++ ", :lo12:" ++ n
     show RET                   = "RET"
     show NOP                   = "NOP"
     show (Comment str)         = "// " ++ str

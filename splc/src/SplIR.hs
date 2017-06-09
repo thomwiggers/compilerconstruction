@@ -1,4 +1,4 @@
-module SplIR where
+module SplIR(module SplIR) where
 
 import SplAST
 
@@ -66,6 +66,30 @@ instance Show SplInstruction where
 isFunction :: SplInstruction -> Bool
 isFunction SplFunction{} = True
 isFunction _             = False
+
+-- computes the names that are assigned by a block of code
+-- ignores temporary variables starting with "_t_"
+assignmentNames :: [SplInstruction] -> [String]
+assignmentNames = filter (\s -> take 3 s /= "_t_" ). assignmentNames'
+    where
+        assignmentNames' :: [SplInstruction] -> [String]
+        assignmentNames' [] = []
+        assignmentNames' (SplBinaryOperation _ (Reg dest) _ _ :xs) = dest : assignmentNames xs
+        assignmentNames' (SplBinaryOperation{}:xs) = assignmentNames xs
+        assignmentNames' (SplUnaryOperation _ (Reg dest) _ :xs) = dest : assignmentNames xs
+        assignmentNames' (SplUnaryOperation{}:xs) = assignmentNames xs
+        assignmentNames' (SplFunction{}:xs) = assignmentNames xs
+        assignmentNames' (SplIf{}:xs) = assignmentNames xs
+        assignmentNames' (SplWhile{}:xs) = assignmentNames xs
+        assignmentNames' (SplMov (Reg dest) _ : xs) = dest : assignmentNames xs
+        assignmentNames' (SplMov _ _ : xs) = assignmentNames xs
+        assignmentNames' (SplMovImm (Reg dest) _ : xs) = dest : assignmentNames xs
+        assignmentNames' (SplMovImm _ _ : xs) = assignmentNames xs
+        assignmentNames' (SplRet{}:xs) = assignmentNames xs
+        assignmentNames' (SplCall _ (Just (Reg dest)) _:xs) = dest : assignmentNames xs
+        assignmentNames' (SplCall{}:xs) = assignmentNames xs
+        assignmentNames' (SplTupleConstr (Reg dest) _ _ : xs) = dest : assignmentNames xs
+        assignmentNames' (SplTupleConstr{} : xs) = assignmentNames xs
 
 printList :: (Show a) => [a] -> String
 printList [] = []

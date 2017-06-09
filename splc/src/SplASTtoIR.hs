@@ -1,4 +1,4 @@
-module SplASTtoIR where
+module SplASTtoIR(astToIR) where
 
 import           Control.Monad.State
 import           Prelude
@@ -21,7 +21,7 @@ getNextVar = do
     s <- get
     let i = nextVar s
     put s{nextVar = 1 + nextVar s}
-    return $ Reg $ "t" ++ show i
+    return $ Reg $ "_t_" ++ show i
 
 getNextLabel :: String -> IRState String
 getNextLabel prefix = do

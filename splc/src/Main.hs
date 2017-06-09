@@ -16,7 +16,6 @@ import SplSSM (showSSM)
 import SplIR (printList)
 import SplIRtoSSM (compileToSSM)
 import SplIRtoAArch64
-import SplAArch64Allocator
 
 data InputSrc = StdInput | Filename String
     deriving (Eq, Show)
