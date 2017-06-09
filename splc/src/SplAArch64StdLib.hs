@@ -24,6 +24,7 @@ initFunction = unlines [
         "add    x28, x28, :lo12:.HEAP",
         "// initialize global variables",
         "bl initGlobals",
+        "bl _splmain",
         "ldr x28, [sp, #0]!",
         "ldp    x29, x30, [sp], 16",
         "ret"
@@ -65,7 +66,7 @@ constants = unlines [
     ".zero    4",
     ".LOCALE_STRING:",
     ".string    \"en_US.UTF-8\"",
-    ".section .rwdata",
+    ".data",
     ".HEAP:",
-    ".size .HEAP, 10000"
+    ".space 80000, 0"
     ]

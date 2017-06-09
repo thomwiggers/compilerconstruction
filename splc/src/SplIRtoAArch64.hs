@@ -12,16 +12,19 @@ import Data.Char (ord)
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
 
-data Scope = Global | Local
+data Scope = Global | Local | StackArgument Offset
 
 data AArch64State = AArch64State {
-        globalMap :: Map.Map String Scope,
-        scopedMap :: Map.Map String Scope
+        globalMap :: Map.Map Register Scope,
+        scopedMap :: Map.Map Register Scope,
+        frameSize :: Int
     }
 
 emptyAArch64State :: AArch64State
 emptyAArch64State = AArch64State {globalMap = Map.empty,
-                                  scopedMap = Map.empty}
+                                  scopedMap = Map.empty,
+                                  frameSize = 0
+                                 }
 
 type IRtoAArch64State = State AArch64State [AArch64Instruction]
 
@@ -45,7 +48,7 @@ compileToAArch64 ir =
         generateGlobalSegments [] = ""
         generateGlobalSegments (name:names) =
                     prefixGlob name ++ ":\n" ++
-                    "\t.size " ++ prefixGlob name ++ ", " ++ show wordLength ++ "\n\n" ++
+                    "\t.space " ++ show wordLength ++ ", 0" ++ "\n\n" ++
                     generateGlobalSegments names
 
 prefixGlob :: String -> String
@@ -58,7 +61,7 @@ programToAArch64 ir = do
 
     -- collect names of global variables
     let globalNames = assignmentNames decls
-    let globMap = Map.fromList [(x, Global) | x <- globalNames]
+    let globMap = Map.fromList [(PR x, Global) | x <- globalNames]
     modify $ \st -> st{globalMap = globMap}
 
     globalCode <- toAArch64 (SplFunction "initGlobals" [] decls)
@@ -68,24 +71,33 @@ programToAArch64 ir = do
 
 load :: SplPseudoRegister -> State AArch64State ([AArch64Instruction], Register)
 load (Reg name) = do
-    maybeKind <- gets $ \st -> Map.lookup name (scopedMap st)
+    maybeKind <- gets $ \st -> Map.lookup (PR name) (scopedMap st)
     let kind = fromMaybe (error "compiler error: trying to load an uninitialised register")
                          maybeKind
     case kind of
         Local -> return ([], PR name)
         Global -> return (loadFromGlobal name, PR name)
+        StackArgument offset -> do
+            -- change loaded stackarg to local var to prevent multiple loads
+            modify $ \st -> st{scopedMap = Map.insert (PR name) Local (scopedMap st)}
+            return ([LDR (PR name) (Address SP offset)], PR name)
 
 store :: SplPseudoRegister -> State AArch64State ([AArch64Instruction], Register)
 store (Reg name) = do
-    maybeKind <- gets $ \st -> Map.lookup name (scopedMap st)
+    maybeKind <- gets $ \st -> Map.lookup (PR name) (scopedMap st)
     kind <- case maybeKind of
         Just k -> return k
         Nothing -> do
-            modify $ \st -> st{scopedMap = Map.insert name Local (scopedMap st)}
+            modify $ \st -> st{scopedMap = Map.insert (PR name) Local (scopedMap st)}
             return Local
     case kind of
         Local -> return ([], PR name)
         Global -> return (storeToGlobal name, PR name)
+        StackArgument _ -> do
+            -- assigning into stack arguments turns them into a local var
+            -- only occurs when it's not already been loaded
+            modify $ \st -> st{scopedMap = Map.insert (PR name) Local (scopedMap st)}
+            return ([], PR name)
 
 storeToGlobal :: String -> [AArch64Instruction]
 storeToGlobal name = [ADRP (PR adrName) (prefixGlob name),
@@ -98,6 +110,23 @@ loadFromGlobal name = [ADRP (PR adrName) (prefixGlob name),
                        AddNamedOffset (PR adrName) (PR adrName) (prefixGlob name),
                        LDR (PR name) (Address (PR adrName) 0)]
         where adrName = "_adr_" ++ name
+
+spill :: Register -> IRtoAArch64State
+spill r = do
+    offset <- gets frameSize
+    modify $ \st -> st{frameSize = offset + wordLength,
+                       scopedMap = Map.insert r (StackArgument offset) (scopedMap st)
+                    }
+    return [STR r (Address SP offset)]
+
+unspill :: Register -> IRtoAArch64State
+unspill r = do
+    maybeRegister <- gets $ Map.lookup r <$> scopedMap
+    case maybeRegister of
+        Just (StackArgument offset) ->
+            return [LDR r (Address SP offset)]
+        _ -> error "Not spilled"
+
 
 toAArch64 :: SplInstruction -> IRtoAArch64State
 -- binary operations
@@ -151,22 +180,89 @@ toAArch64 (SplMovImm rd i) = do
     return $ opCode ++ storeCode
 
 -- return
-toAArch64 (SplRet Nothing) = return [RET]
+toAArch64 (SplRet Nothing) = do
+    lrRestoreCode <- unspill LR
+    return $ lrRestoreCode ++ [RET]
 toAArch64 (SplRet (Just r)) = do
     (loadCode, reg) <- load r
-    return $ loadCode ++ [MOV (X 0) reg, RET]
+    lrRestoreCode <- unspill LR
+    return $ loadCode ++ lrRestoreCode ++ [MOV (X 0) reg, RET]
+
+-- function call
+toAArch64 (SplCall label maybeResult args) = do
+    let (regArgs, stackArgs) = splitAt 8 args
+
+    -- prepare arguments
+    (argInstrs, argRegs) <- unzip <$> mapM load regArgs
+
+    -- spill x0-x7,
+    spillInstrs <- concat <$> mapM spill [X i | i <- [0..7]]
+
+    -- put arguments in right registers
+    let regArgMovs = zipWith MOV [X i | i <- [0..]] argRegs
+
+    -- modify stack pointer with frame Size
+    fs <- gets frameSize
+    let spAdjust = [SUB SP SP (Imm fs)]
+
+    -- prepare and push arguments that are to be put on stack
+    stackArgInstr <- concat <$> mapM loadPush stackArgs
+
+    -- call
+    let callInstr = [BranchLink label]
+
+    -- restore stack pointer
+    let spRestore = [ADD SP SP (Imm fs)]
+
+    -- get result
+    resultInstrs <- case maybeResult of
+            Just rReg -> do
+                (storeInstrs, resultReg) <- store rReg
+                return (MOV resultReg (X 0) : storeInstrs)
+            Nothing -> return []
+
+    -- restore spilled registers
+    let unspillInstrs = map (\(STR r a) -> LDR r a) spillInstrs
+    return $ concat argInstrs ++
+            spillInstrs ++
+            regArgMovs ++
+            spAdjust ++
+            stackArgInstr ++
+            callInstr ++
+            spRestore ++
+            resultInstrs ++
+            unspillInstrs
+    where
+        loadPush arg = do
+            (instr, _) <- load arg
+            (storeInstr, _) <- store arg
+            return (instr ++ storeInstr)
 
 -- functions
-toAArch64 (SplFunction label [] ir) = do
-    -- FIXME no arguments
-    -- Make sure to first copy x0, .. x7 to temps to not clash
-    -- with register allocation of the return register etc?
-
+toAArch64 (SplFunction label args ir) = do
     -- set scoped map
-    modify $ \st -> st{scopedMap = globalMap st}
+    let (regArgs, stackArgs) = splitAt 8 args
+    modify $ \st -> st{
+        scopedMap =
+            globalMap st
+            `Map.union`
+            Map.fromList [(PR a, Local) | (Reg a) <- regArgs]
+            `Map.union`
+            Map.fromList [(PR a, StackArgument $ i * wordLength) | (i, Reg a) <- zip [0..] stackArgs],
+        frameSize = length stackArgs * wordLength
+        }
 
-    functionCode <- concat <$> mapM toAArch64 ir
-    return [BasicBlock $ Label (functionName label) : functionCode ++ [RET]]
+    -- generate movs from hw regs to pseudo regs to aid allocator
+    let allocMovs = zipWith (\x (Reg r) -> MOV (PR r) x) [X i | i <- [0..]] regArgs
+
+    -- spill lr
+    spillLRCode <- spill LR
+
+    functionBody <- concat <$> mapM toAArch64 ir
+
+    let unspillLRCode = map (\(STR r a) -> LDR r a) spillLRCode
+
+    return [BasicBlock $ Label (functionName label) : spillLRCode ++ allocMovs ++ functionBody ++ unspillLRCode ++ [RET]]
 
 -- if
 toAArch64 (SplIf label cond thenIR elseIR) = do

@@ -227,4 +227,14 @@ assignRegistersToInstruction (BasicBlock instrs) = do
     -- put back parent state
     modify $ \st -> st{parentRegisters = parentRegs }
 
-    return $ BasicBlock assignedInstrs
+    -- clean up useless instructions and return the block
+    return $ BasicBlock (cleanupInstructions assignedInstrs)
+
+
+cleanupInstructions :: [AArch64Instruction] -> [AArch64Instruction]
+cleanupInstructions [] = []
+cleanupInstructions (m@(MOV a b) : xs)
+    | a == b = cleanupInstructions xs
+    | otherwise = m : cleanupInstructions xs
+cleanupInstructions (NOP : xs) = cleanupInstructions xs
+cleanupInstructions (x:xs) = x : cleanupInstructions xs
