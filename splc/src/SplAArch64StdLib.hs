@@ -12,7 +12,7 @@ initFunction = unlines [
         ".type  main, %function",
         "main:",
         "stp x29, x30, [sp, -16]!",
-        "push x28",
+        "str x28, [sp, #0]!",
         "add x29, sp, 0",
         "// setlocale",
         "adrp   x1, .LOCALE_STRING",
@@ -24,7 +24,7 @@ initFunction = unlines [
         "add    x28, x28, :lo12:.HEAP",
         "// initialize global variables",
         "bl initGlobals",
-        "pop x28",
+        "ldr x28, [sp, #0]!",
         "ldp    x29, x30, [sp], 16",
         "ret"
     ]
@@ -67,5 +67,5 @@ constants = unlines [
     ".string    \"en_US.UTF-8\"",
     ".section .rwdata",
     ".HEAP:",
-    ".size 10000"
+    ".size .HEAP, 10000"
     ]

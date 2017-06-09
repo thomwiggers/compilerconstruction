@@ -1,4 +1,4 @@
-module SplAArch64 where
+module SplAArch64 (module SplAArch64) where
 
 import           Prelude hiding (EQ, GT, LT)
 
@@ -87,7 +87,7 @@ instance Show AArch64Instruction where
     show (OR r a b)            = "OR" +++ r ++< a ++< b
     show (EOR r a b)           = "EOR" +++ r ++< a ++< b
     show (CMP a b)             = "CMP" +++ a ++< b
-    show (CSET a c)            = "CSET" +++ a ++< c
+    show (CSET a c)            = "CSET" +++ a ++ ", " ++ asmCond c
     show (MOV r a)             = "MOV" +++ r ++< a
     show (MOVK r a)            = "MOVK" +++ r ++< a
     show (BranchConditional cond label)
