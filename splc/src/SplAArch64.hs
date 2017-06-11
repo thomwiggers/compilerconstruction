@@ -65,6 +65,7 @@ data AArch64Instruction
     | BranchLink Label
     | LDR Register Address      -- ldr x0, [sp, #16]
     | STR Register Address      -- str x0, [sp, #12]
+    | STP Register Register Address
     | ADRP Register Label
     | AddNamedOffset Register Register Label
     | RET
@@ -101,6 +102,7 @@ instance Show AArch64Instruction where
     show (BranchLink label)    = "BL " ++ label
     show (LDR r a)             = "LDR" +++ r ++< a
     show (STR r a)             = "STR" +++ r ++< a
+    show (STP r s a)           = "STP" +++ r ++< s ++< a
     show (ADRP r n)            = "ADRP" +++ r ++ ", " ++ n
     show (AddNamedOffset r a n) = "ADD" +++ r ++< a ++ ", :lo12:" ++ n
     show RET                   = "RET"

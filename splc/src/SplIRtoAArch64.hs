@@ -54,6 +54,22 @@ compileToAArch64 ir =
 prefixGlob :: String -> String
 prefixGlob = (++) ".GLOB_"
 
+
+tupleFstHeapOffset :: Int
+tupleFstHeapOffset = 0 * wordLength
+
+tupleSndHeapOffset :: Int
+tupleSndHeapOffset = 1 * wordLength
+
+listHdHeapOffset :: Int
+listHdHeapOffset = 0 * wordLength
+
+listTlHeapOffset :: Int
+listTlHeapOffset = 1 * wordLength
+
+heapPtr :: Register
+heapPtr = X 28
+
 programToAArch64 :: SplIR -> State AArch64State ([AArch64Instruction], [AArch64Instruction], [String])
 programToAArch64 ir = do
     let decls = filter (not . isFunction) ir
@@ -81,6 +97,29 @@ load (Reg name) = do
             -- change loaded stackarg to local var to prevent multiple loads
             modify $ \st -> st{scopedMap = Map.insert (PR name) Local (scopedMap st)}
             return ([LDR (PR name) (Address SP offset)], PR name)
+load r@(TupleFst reg) = loadFromHeap reg (getRegisterName r) tupleFstHeapOffset
+load r@(TupleSnd reg) = loadFromHeap reg (getRegisterName r) tupleSndHeapOffset
+load r@(ListHd reg) = loadFromHeap reg (getRegisterName r) listHdHeapOffset
+load r@(ListTl reg) = loadFromHeap reg (getRegisterName r) listTlHeapOffset
+load EmptyList = return ([MOV (PR "emptyList") (Imm 0)], PR "emptyList")
+
+getRegisterName :: SplPseudoRegister -> String
+getRegisterName (Reg name) = name
+getRegisterName (TupleFst r) = "_fst_" ++ getRegisterName r
+getRegisterName (TupleSnd r) = "_snd_" ++ getRegisterName r
+getRegisterName (ListHd r) = "_hd_" ++ getRegisterName r
+getRegisterName (ListTl r) = "_tl_" ++ getRegisterName r
+getRegisterName EmptyList = "emptyList"
+
+loadFromHeap :: SplPseudoRegister -> String -> Offset -> State AArch64State ([AArch64Instruction], Register)
+loadFromHeap reg targetRegName offset = do
+    -- load address represented by reg
+    let comment = Comment $ "loading heap pointer " ++ show reg
+    (instr, addrReg) <- load reg
+    let newReg = PR targetRegName
+    let loadInstr = instr ++ [LDR newReg (Address addrReg offset)]
+    return (comment : loadInstr, newReg)
+
 
 store :: SplPseudoRegister -> State AArch64State ([AArch64Instruction], Register)
 store (Reg name) = do
@@ -98,6 +137,21 @@ store (Reg name) = do
             -- only occurs when it's not already been loaded
             modify $ \st -> st{scopedMap = Map.insert (PR name) Local (scopedMap st)}
             return ([], PR name)
+store r@(TupleFst reg) = storeToHeap reg (getRegisterName r) tupleFstHeapOffset
+store r@(TupleSnd reg) = storeToHeap reg (getRegisterName r) tupleSndHeapOffset
+store r@(ListHd reg) = storeToHeap reg (getRegisterName r) listHdHeapOffset
+store r@(ListTl reg) = storeToHeap reg (getRegisterName r) listTlHeapOffset
+store EmptyList    = error "Can't store to empty list"
+
+storeToHeap :: SplPseudoRegister -> String -> Offset -> State AArch64State ([AArch64Instruction], Register)
+storeToHeap reg targetRegName offset = do
+    -- load address represented by reg
+    let comment = Comment $ "loading heap pointer " ++ show reg
+    (instr, addrReg) <- load reg
+    let newReg = PR targetRegName
+    let loadInstr = instr ++ [STR newReg (Address addrReg offset)]
+    return (comment : loadInstr, newReg)
+
 
 storeToGlobal :: String -> [AArch64Instruction]
 storeToGlobal name = [ADRP (PR adrName) (prefixGlob name),
@@ -148,9 +202,20 @@ toAArch64 (SplBinaryOperation operator rd rn rm) = do
             SplOperatorAnd -> [AND dReg nReg mReg]
             SplOperatorOr -> [OR dReg nReg mReg]
             SplOperatorModulus -> [SDIV dReg nReg mReg, MSUB dReg dReg mReg nReg] -- Rd = Rn / Rm; Rd = -(Rd * Rm) + Rn
-            SplOperatorCons -> error "lists not yet implemented"
+            SplOperatorCons -> [STP nReg mReg (Address heapPtr 0),
+                                MOV dReg heapPtr,
+                                ADD heapPtr heapPtr (Imm $ 2 * wordLength)]
     return $ loadnCode ++ loadmCode ++ opCode ++ storeCode
 
+toAArch64 (SplTupleConstr d l r) = do
+    (loadlCode, lReg) <- load l
+    (loadrCode, rReg) <- load r
+    (storeCode, dReg) <- store d
+
+    let tupleCode = [STP lReg rReg (Address heapPtr 0),
+                     MOV dReg heapPtr,
+                     ADD heapPtr heapPtr (Imm $ 2 * wordLength)]
+    return $ loadlCode ++ loadrCode ++ tupleCode ++ storeCode
 -- unary operations:
 toAArch64 (SplUnaryOperation operator rd rm) = do
     (loadnCode, mReg) <- load rm
