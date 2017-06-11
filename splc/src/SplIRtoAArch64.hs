@@ -224,7 +224,8 @@ toAArch64 (SplCall label maybeResult args) = do
             Nothing -> return []
 
     -- restore spilled registers
-    let unspillInstrs = map (\(STR r a) -> LDR r a) spillInstrs
+    let (unspillX0 : unspillInstrs) = map (\(STR r a) -> LDR r a) spillInstrs
+
     return $ concat argInstrs ++
             spillInstrs ++
             regArgMovs ++
@@ -232,8 +233,11 @@ toAArch64 (SplCall label maybeResult args) = do
             stackArgInstr ++
             callInstr ++
             spRestore ++
+            unspillInstrs ++
             resultInstrs ++
-            unspillInstrs
+            -- unspill X0 separately because we don't want to overwrite the result
+            -- register before we can move it out
+            [unspillX0]
     where
         loadPush arg = do
             (instr, _) <- load arg
