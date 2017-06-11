@@ -1,0 +1,11 @@
+facR ( n ) :: Int -> Int {
+    if ( n < 2 ) {
+        return 1;
+    } else {
+        return n * facR ( n - 1 );
+    }
+}
+
+main () {
+    printInt(facR(10));
+}
