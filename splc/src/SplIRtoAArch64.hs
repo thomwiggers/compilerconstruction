@@ -117,7 +117,7 @@ spill r = do
     modify $ \st -> st{frameSize = offset + wordLength,
                        scopedMap = Map.insert r (StackArgument offset) (scopedMap st)
                     }
-    return [STR r (Address SP offset)]
+    return [STR r (Address SP (-offset))]
 
 unspill :: Register -> IRtoAArch64State
 unspill r = do
@@ -203,7 +203,9 @@ toAArch64 (SplCall label maybeResult args) = do
 
     -- modify stack pointer with frame Size
     fs <- gets frameSize
-    let spAdjust = [SUB SP SP (Imm fs)]
+    -- sp must be 16-bit aligned
+    let alignedFs = if fs `mod` 16 == 0 then fs else 16 * ((fs `div` 16) + 1)
+    let spAdjust = [SUB SP SP (Imm alignedFs)]
 
     -- prepare and push arguments that are to be put on stack
     stackArgInstr <- concat <$> mapM loadPush stackArgs
@@ -212,7 +214,7 @@ toAArch64 (SplCall label maybeResult args) = do
     let callInstr = [BranchLink label]
 
     -- restore stack pointer
-    let spRestore = [ADD SP SP (Imm fs)]
+    let spRestore = [ADD SP SP (Imm alignedFs)]
 
     -- get result
     resultInstrs <- case maybeResult of
