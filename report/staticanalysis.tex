@@ -1,8 +1,42 @@
 \chapter{Static Analysis}
+
+In this chapter we will discuss how we approached the static analysis in our compiler.
+We started out doing Type Checking, but later implemented the more advanced Type Inference.
+We will then show the inference rules and reflect on our implementation.
+
 \todo[inline]{Dibs Thom}
 \todo[inline]{ergens scoping}
 
 \section{Type Checking}
+
+Type checking is a fairly simple analysis of a program.
+By restricting the analysis to only verifying each specified type matches with what is expected, it is usually possible to treat each line by itself.
+This does require a programmer to specify the types for each function or variable.
+For some specific constructions, such as the empty list expression (\spl{[]}), this does require some special care: the type of the empty list is not as exactly defined as other constructions.
+
+We implemented type checking by folding a function over the parsed syntax tree.
+We track the state in a monad.
+The functions recursively handle the nested segments of the declarations, functions, expressions and statements.
+They either fail or return the result of the derivation of that segment.
+Definitions of functions or variables are kept track of in the state with their derived type.
+Encountered identifiers are looked up.
+
+The data structures we used can be found in Listing~\ref{lst:typecheckdatastructures}.
+We used several simple utility functions like \haskellinline{disallowVoid} to restrict the results of recursive \haskellinline{typeCheck} calls.
+Listing~\ref{lst:typecheckunaryoperations} shows how this is applied for unary operations.
+
+\begin{listing}[hbtp]
+    \centering
+    \inputhaskell{examples/typecheck_datastructures.hs}
+    \caption{Data structures for type checking}\label{lst:typecheckdatastructures}
+\end{listing}
+
+\begin{listing}[hbtp]
+    \centering
+    \inputhaskell{examples/typecheck_unaryops.hs}
+    \caption{Type checking unary operations}\label{lst:typecheckunaryoperations}
+\end{listing}
+
 \todo[inline]{How checked types}
 
 \section{Type Inference}
@@ -14,3 +48,4 @@
 \todo[inline]{Haskell is great. No error when specified type is more general than expression, time wasted on checking, poor error messages}
 
 
+% vim: set ts=4 sw=4 tw=0 et wrap :

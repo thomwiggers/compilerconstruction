@@ -1,4 +1,4 @@
-\documentclass[a4paper,draft]{report}
+\documentclass[a4paper]{report}
 
 \usepackage[utf8]{inputenc}
 \usepackage[british]{babel}
@@ -12,9 +12,14 @@
     urlcolor=urlcolor,
     citecolor=citecolor
 ]{hyperref}
-\usepackage{microtype}
 \usepackage{libertine}
+\usepackage{microtype}
+\usepackage{minted}
 \usepackage{todonotes}
+
+\usemintedstyle{friendly}
+
+\input{macros.tex}
 
 \author{Aaron van Geffen \and Thom Wiggers}
 \title{Compiler Construction report}
