@@ -21,23 +21,28 @@
 
 \begin{frame}{Why run SPL on ARM?}
     \begin{itemize}
-        \item Thom has lots of experience with ARM
-        \item No more silly emulators in Java
-        \item Seemed like fun
+        \item Seemed like a fun challenge
+        \item No more emulators in Java
+        \item Real register-based architecture and calling convention
+        \item Thom has experience with ARM
     \end{itemize}
 \end{frame}
 
 \begin{frame}{Real Hardware}
     \begin{columns}
-        \column{0.5\textwidth}
-        Plaatje
+        \column{0.55\textwidth}
+        \begin{figure}[h]
+            \centering
+            \includegraphics[width=0.8\textwidth]{imgs/odroid.jpg}
+            \caption{ODROID-C2}\label{fig:odroid}
+        \end{figure}
 
-        \column{0.5\textwidth}
+        \column{0.45\textwidth}
         \begin{itemize}
             \item Quad-Core CPU
             \item 64-bit Cortex-A53
             \item ARMv8a
-            \item 1.536 MHz
+            \item 1536 MHz
             \item 2GB RAM
             \item Low Power
             \item \$ 45
@@ -51,7 +56,7 @@
         \item RISC architecture
         \item 31 general-purpose registers $r0, \ldots, r31$
             \begin{itemize}
-                \item Doesn't include the program counter or stack pointer ($sp$)
+                \item Does not include the program counter or stack pointer ($sp$)
                 \item Notation: $x0$ is $r0$ in 64-bit mode, $w0$ is $r0$ in 32-bit mode
             \end{itemize}
         \item Instructions have discrete inputs and outputs. They can also get one immediate values or receive their input with some rotation.
@@ -65,24 +70,9 @@
     \end{itemize}
 \end{frame}
 
-\begin{frame}{AArch64 Calling Convention}
-    We adopted ARM's C calling conventions\footnote{\url{http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf}} for function calls:
-    \begin{itemize}
-        \item Registers $r0, \ldots, r7$ are used for arguments
-        \item Registers $r0, \ldots, r18$ are caller-saved
-        \item Registers $r19, \ldots, r30$ are callee-saved
-        \item Extra arguments are put on the stack
-        \item The Link Register ($x30$) contains the return address
-        \item Register $r0$ contains the function result after return
-    \end{itemize}
-
-    \vspace{3em}
-    Allows easy use of libc library functions
-\end{frame}
-
 \begin{frame}{Going from SSM to AArch64}
     \begin{columns}
-        \column{0.5\textwidth}
+        \column{0.45\textwidth}
         \begin{block}{SSM}
             \begin{itemize}
                 \item No registers used for operations
@@ -91,7 +81,7 @@
                 \item No separation of code and data segments
             \end{itemize}
         \end{block}
-        \column{0.5\textwidth}
+        \column{0.45\textwidth}
         \begin{block}{AArch64}
             \begin{itemize}
                 \item Mandatory registers for function calling
@@ -101,6 +91,95 @@
             \end{itemize}
         \end{block}
     \end{columns}
+\end{frame}
+
+\begin{frame}{Global Variables}
+    \begin{itemize}
+        \item Known at compile time
+        \item In C they live on the heap\ldots
+        \item \ldots but initial value needs to be known at compile time (static)
+        \item In SPL, any expression is allowed
+        \item Move initialisation code into special function at compile-time.
+
+        \pause
+        \vspace{1em}
+
+        \item In SSM, we used a register to locate globals in memory
+        \item For AArch64, we specify labeled \texttt{.data} sections in the generated assembly code 
+        \item Globals are accessed by loading the address of that label
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{AArch64 Calling Convention}
+    We adopted ARM's C calling conventions\footnote{\url{http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf}} for function calls:
+    \begin{itemize}
+        \item Registers $r0, \ldots, r18$ are caller-saved
+        \item Registers $r19, \ldots, r30$ are callee-saved
+        \item Registers $r0, \ldots, r7$ are used for arguments
+        \item Extra arguments are put on the stack
+        \item The Link Register ($r30$) contains the return address
+        \item Register $r0$ contains the function result after return
+    \end{itemize}
+
+    \vspace{3em}
+    Allows easy use of \texttt{libc} library functions
+\end{frame}
+
+\begin{frame}{Register Allocation}
+    \begin{block}{Typical Approach}
+    \begin{enumerate}[<+->]
+        \item Divide the IR into \emph{Basic Blocks}
+        \item Create a \emph{Static Single Assignment} version of the IR
+        \item Create dependency graph
+        \item Apply a graph colouring algorithm
+        \item When necessary, generate spill code and go back to step 2
+        \item Finally, assign registers accordingly
+    \end{enumerate}
+    \end{block}
+    \vspace{2em}
+    \only<7->{Both step 2 and 4 are not trivial.
+    We opted to do a more naive approach first.}
+
+\end{frame}
+
+\begin{frame}{Register Allocation}
+    \begin{block}{Our Approach}
+        \begin{enumerate}[<+->]
+            \item Divide the IR into \emph{Basic Blocks}
+            \item Go through the IR bottom up, for each instruction:
+                \begin{enumerate}
+                    \item Collect the output pseudo-register and input pseudo-registers
+                    \item Remove the output register from the current list of live registers
+                    \item Add the input registers to the list
+                    \item Annotate the instruction with the current list
+                    \item Move on to previous line
+                \end{enumerate}
+            \item Use the information about live pseudo-registers to assign them to hardware registers
+        \end{enumerate}
+    \end{block}
+\end{frame}
+
+\begin{frame}{Current Status}
+    \begin{itemize}[<+->]
+        \item All instructions are implemented
+        \item Tuples and lists are allocated on a statically sized heap
+        \item \texttt{print} and \texttt{printInt} call \texttt{libc}'s \texttt{putwchar} and \texttt{printf}
+        \item We can run recursive functions, however\ldots
+        \item Current register allocation has problems:
+            \begin{itemize}
+                \item Hard to incorporate calling convention
+                \item Cannot generate register spills
+                \item Far from optimal: generates unnecessary moves
+            \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \begin{figure}[h]
+        \centering
+        \includegraphics[width=0.8\textwidth]{imgs/lego.jpg}
+        \caption{A Message From Our Sponsors}\label{fig:lego}
+    \end{figure}
 \end{frame}
 
 \end{document}
