@@ -1,7 +1,4 @@
 \chapter{SPL Grammar}\label{ch:grammar}
-\todo[inline]{grammar}
-
-\todo[inline]{Dibs Aaron}
 
 % \setlength{\grammarparsep}{20pt plus 1pt minus 1pt} % increase separation between rules
 \setlength{\grammarindent}{5em} % increase separation between LHS/RHS
@@ -38,5 +35,36 @@
 
 <Stmt> ::= `if' `(' <Exp> `)' `\{' <Stmt>* `}' [ `else' `\{' <Stmt>* `\}' ]
 		\alt `while' `(' <Exp> `)' `\{' <Stmt>* `\}'
+		\alt <id> <Field> `=' <Exp> `;'
+		\alt <FunCall> `;'
+		\alt `return' [ <Exp> ] `;'
+
+<Exp> ::= <id> <Field>
+	\todo[author=Aaron]{Op2 moet nog}
+	\alt <Op1> <Exp>
+	\alt <int>
+	\alt <char>
+	\alt `False' | `True'
+	\alt `(' <Exp> `)'
+	\alt <FunCall>
+	\alt `[]'
+	\alt `(' <Exp> `,' <Exp> `)'
+
+<Field> ::= [ `.' (`hd' | `tl' | `fst' | `snd') <Field>]
+
+<FunCall> ::= <id> `(' [ <ActArgs> ] `)'
+
+<ActArgs> ::= <Exp> [ `,' <ActArgs> ]
+
+<Op2> ::= `+' | `-' | `*' | `/' | `\%'
+	\alt `==' | `\textless' | `\textgreater' | `\textless=' | `\textgreater=' | `!='
+	\alt `\&\&' | `||'
+	\alt `:'
+
+<Op1> ::= `!' | `-'
+
+<int> ::= [`-'] <digit>+
+
+<id> ::= <alpha> ( `\_' | <alphaNum>)*
 
 \end{grammar}
