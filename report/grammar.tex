@@ -3,4 +3,40 @@
 
 \todo[inline]{Dibs Aaron}
 
+% \setlength{\grammarparsep}{20pt plus 1pt minus 1pt} % increase separation between rules
+\setlength{\grammarindent}{5em} % increase separation between LHS/RHS
 
+\begin{grammar}
+
+<SPL> ::= <Decl>+
+
+<Decl> ::= <VarDecl>
+		\alt <FunDecl>
+
+<VarDecl> ::= (`var' | <Type>) <id> `=' <Exp> `;'
+
+<FunDecl> ::= <id> `(' [ <FArgs> ] `)' [ `::' <FunType> ] `\{' <VarDecl>* <Stmt>+ `\}'
+
+<RetType> ::= <Type>
+		\alt `Void'
+
+<FunType> ::= [ <FTypes> ] `\textrightarrow' <RetType>
+
+<FTypes> ::= <Type> [ <FTypes> ]
+
+<Type> ::= <BasicType>
+		\alt `(' <Type> `,' <Type> `)'
+		\alt `[' <Type> `]'
+		\alt <id>
+
+<BasicType> ::= `Int'
+			\alt `Bool'
+			\alt `Char'
+
+% <FArgs> ::= [ <FArgs> `,' ] <id>
+<FArgs> ::= <id> [ `,' <FArgs> ]
+
+<Stmt> ::= `if' `(' <Exp> `)' `\{' <Stmt>* `}' [ `else' `\{' <Stmt>* `\}' ]
+		\alt `while' `(' <Exp> `)' `\{' <Stmt>* `\}'
+
+\end{grammar}
