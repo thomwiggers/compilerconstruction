@@ -64,19 +64,22 @@ We will discuss the type rules for SPL in Section~\ref{sec:typerules}.
 
 \section{Type Rules}\label{sec:typerules}
 
+\subsection{Type annotations}
 First we need to show how to derive types from the literal type annotations.
 We are going to need these for a lot of things, like declarations and function definitions.
 \[
 \infer{\Gamma \vdash a : \sigma}{(a, \sigma) \in \{(\mbox{`Bool'}, Bool), (\mbox{`Int'}, Int), (\mbox{`Char'}, Char)\} }
 \]
-We also need a version for lists and tuples.
+We also need rules for lists and tuples.
 These can also be used for their expressions.
 \[
 \infer{\Gamma \vdash [a] : [\sigma]}{\Gamma \vdash a : \sigma}\qquad
 \infer{\Gamma \vdash (a, b) : (\sigma, \tau)}{\Gamma \vdash a : \sigma & \Gamma \vdash b : \tau}
 \]
 
-Next, we are going to derive expressions:
+\subsection{Expressions}
+Expressions show up in many places in the SPL grammar.
+We can derive their rules as follows:
 \begin{align*}
     \infer{\Gamma \vdash i : Int}{i \in \mathbb{Z}} &\qquad \mbox{Integer literals} \\
     \infer{\Gamma \vdash c : Char}{c \in \mathsf{Unicode}} &\qquad \mbox{Character literals} \\
@@ -95,6 +98,9 @@ Next, we are going to derive expressions:
     \infer{\Gamma \vdash [] : [\sigma]}{} &\qquad \mbox{Empty List expression}
 \end{align*}
 
+
+\subsection{Declarations and functions}\label{sec:declarations}
+
 Declarations are important as they allow to put new things into the state.
 We need to consider following statements and declarations to propagate this definition.
 Here we also see that an ordering of types arises: more general types can be substituted for more concrete types.
@@ -106,7 +112,6 @@ Here we also see that an ordering of types arises: more general types can be sub
         \Gamma,\; identifier : \sigma \vdash next
     }
 \]
-
 We need a separate version for declarations with $\mathsf{var}$ as they follow the expression's type instead of the specified type.
 \[
     \infer{\Gamma \vdash \mathsf{var} \; identifier = expr;next : \tau}{
@@ -121,19 +126,94 @@ Using it allows for multiple uses of variable typed functions.
 \[
     \infer{\Gamma \vdash identifier(arg)\; ::\; argtype\; \to\; rettype\; \{\; body\; \}\; next : \phi}{
         \begin{array}{r}
-        \Gamma \vdash arg : \sigma \\
-        \Gamma \vdash argtype : \tau\\
-        \sigma \sqsubseteq \tau \\
-        \Gamma \vdash rettype : \rho \\
-        \Gamma, \mathsf{returntype} : \rho \vdash body : \alpha \\
-        \Gamma, identifier :\forall \tau,\;\rho. \tau \to \rho \vdash next : \phi
+            \Gamma \vdash arg : \sigma \\
+            \Gamma \vdash argtype : \tau\\
+            \sigma \sqsubseteq \tau \\
+            \Gamma \vdash rettype : \rho \\
+            \Gamma, \mathsf{returntype} : \rho \vdash body : \alpha \\
+            \Gamma, identifier :\forall \tau,\;\rho. \tau \to \rho \vdash next : \phi
         \end{array}
     }
 \]
 \todo[author=Thom]{Is this correct? I wonder if $\forall \tau, \rho$ works as it should.}
 
-Statements are the remaining meat of the schemes that SPL requires.
+\subsection{Statements}
 
+Statements are the remaining meat of the schemes that SPL requires.
+We start out by infering \spl{if}-statements.
+We will consider \spl{if}-statements that have not been specified with an \spl{else} clause as been having specified with an empty \spl{else} clause.
+\[
+    \infer{\Gamma \vdash \mathsf{if}\; (\; expr\;)\; \{\; thenStmts\; \}\;
+    \mathsf{else}\; \{\; elseStmts\; \} : \sigma}{
+            \Gamma \vdash expr : Bool &
+            \Gamma \vdash thenStmts : \tau &
+            \Gamma \vdash elseStmts : \rho
+    }
+\]
+\spl{while}-statements follow analogously:
+\[
+    \infer{\Gamma \vdash \mathsf{while}\; (\; expr\;)\; \{\; stmts\; \}: \sigma}{
+            \Gamma \vdash expr : Bool &
+            \Gamma \vdash stmts : \tau
+    }
+\]
+Update statements need to retrieve the identifier's type (with optionally specified fields) and check the type of the expression.
+\[
+    \infer{\Gamma \vdash identifier = expr : \rho}{
+        \Gamma \vdash identifier : \sigma &
+        \Gamma \vdash expr : \tau &
+        \sigma \sqsubseteq \tau
+    }
+\]
+Function call statements work similarly.
+Like above, we will stick to single-argument functions.
+This rule can also be used to handle function calls in expressions.
+\[
+    \infer{\Gamma \vdash identifier(arg) : \rho}{
+        \Gamma \vdash arg : \sigma &
+        \Gamma \vdash identifier : \tau \to \rho &
+        \sigma \sqsubseteq \tau
+    }
+\]
+
+Return statements are slightly more interesting.
+We need to unify the type of the expression with the return type that was specified for the function we are currently evaluating.
+This is why we extended the environment with that information in Section~\ref{sec:declarations}.
+We will not consider empty return statements separately, but it can easily be imagined how they would work.
+\[
+    \infer{\Gamma \vdash \mathsf{return}\; expr; : \rho}{
+        \Gamma \vdash expr : \sigma &
+        \Gamma \vdash \mathsf{returntype} : \tau &
+        \sigma \sqsubseteq \tau
+    }
+\]
+
+\subsection{Plumbing}
+
+Composition is needed to allow to put two statements together.
+Because we resolve continuation in declarations separately, we don't need to handle state changes and can resolve expressions in parallel.
+In practice, the collected unifiers need to be applied, so they are processed in sequence.
+\[
+    \infer{\Gamma \vdash e_1;\;e_2 : \rho}{
+        \Gamma \vdash e_1 : \sigma &
+        \Gamma \vdash e_2 : \tau
+    }
+\]
+
+For the continuation of declarations and functions to work, we need an empty statement:
+\[
+    \infer{\Gamma \vdash \qquad }{}
+\]
+
+Finally, we need generalization:
+\[
+    \infer{\Gamma \vdash e : \forall a.\; a}{
+        \Gamma \vdash e : \sigma &
+        e \not\in \operatorname{freevars}(\Gamma)
+    }
+\]
+
+We already incorporated instantiation in the rules described above where relevant.
 
 \section{Reflection}
 \todo[inline]{Haskell is great. No error when specified type is more general than expression, time wasted on checking, poor error messages}
