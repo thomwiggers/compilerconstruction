@@ -17,7 +17,8 @@
 <RetType> ::= <Type>
 		\alt `Void'
 
-<FunType> ::= [ <FTypes> ] `\textrightarrow' <RetType>
+<FunType> ::= [ <FTypes> `\textrightarrow' ] <RetType>
+\todo[author=Thom]{Ik heb hier de pijl alleen verplicht gemaakt als er een argumenttype is}
 
 <FTypes> ::= <Type> [ <FTypes> ]
 
