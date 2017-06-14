@@ -64,6 +64,37 @@ We will discuss the type rules for SPL in Section~\ref{sec:typerules}.
 
 \section{Type Rules}\label{sec:typerules}
 
+First we need to show how to derive types from the literal type annotations.
+We are going to need these for a lot of things, like declarations and function definitions.
+\[
+\infer{\Gamma \vdash a : \sigma}{(a, \sigma) \in \{(\mbox{`Bool'}, Bool), (\mbox{`Int'}, Int), (\mbox{`Char'}, Char)\} }
+\]
+We also need a version for lists and tuples:
+\[
+\infer{\Gamma \vdash [a] : [\sigma]}{\Gamma \vdash a : \sigma}\qquad
+\infer{\Gamma \vdash (a, b) : (\sigma, \tau)}{\Gamma \vdash a : \sigma & \Gamma \vdash b : \tau}
+\]
+
+Next, we're going to derive expressions:
+\begin{align*}
+    \infer{\Gamma \vdash i : Int}{i \in \mathbb{Z}} &\qquad \mbox{Integer literals} \\
+    \infer{\Gamma \vdash c : Char}{c \in \mathsf{Unicode}} &\qquad \mbox{Character literals} \\
+    \infer{\Gamma \vdash b : Bool}{b \in \{\mbox{`True', `False'}\}} &\qquad \mbox{Boolean literals} \\
+    \infer{\Gamma \vdash ~b : Bool}{\Gamma \vdash b : Bool} &\qquad \mbox{Unary inversion}\\
+    \infer{\Gamma \vdash -i : Int}{\Gamma \vdash i : Int} &\qquad \mbox{Unary negation}\\
+    \infer{\Gamma \vdash a\; o\; b : \sigma}{\Gamma \vdash a : \sigma & \Gamma \vdash b : \sigma & \sigma \in \{Char, Int\} & o \in \{+, -\}} &\qquad \mbox{Operations on Ints and Chars}\\
+    \infer{\Gamma \vdash a\; o\; b : Int}{\Gamma \vdash a : Int & \Gamma \vdash b : Int & o \in \{*, /, \% \}} &\qquad \mbox{Operations on Ints}\\
+\end{align*}
+\begin{align*}
+    \infer{\Gamma \vdash a\; o\; b : Bool}{\Gamma \vdash a : \sigma & \Gamma \vdash b : \sigma & o \in \{==, !=, <, <=, >=, >\}} &\qquad \mbox{Comparison operations}\\
+    \infer{\Gamma \vdash a\mathsf{.hd} : \sigma}{\Gamma \vdash a : [\sigma]} &\qquad \mbox{List head}\\
+    \infer{\Gamma \vdash a\mathsf{.tl} : [\sigma]}{\Gamma \vdash a : [\sigma]} &\qquad \mbox{List tail}\\
+    \infer{\Gamma \vdash a\mathsf{.fst} : \sigma}{\Gamma \vdash a : (\sigma, \tau)} &\qquad \mbox{Tuple first}\\
+    \infer{\Gamma \vdash a\mathsf{.snd} : \tau}{\Gamma \vdash a : (\sigma, \tau)} &\qquad \mbox{Tuple second}\\
+\end{align*}
+
+Declarations are important as they allow to put new things into the state.
+
 \section{Reflection}
 \todo[inline]{Haskell is great. No error when specified type is more general than expression, time wasted on checking, poor error messages}
 
