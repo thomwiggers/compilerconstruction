@@ -15,6 +15,12 @@
 \usepackage{libertine}
 \usepackage{microtype}
 \usepackage{todonotes}
+\usepackage[
+    backend=biber,
+    hyperref=true,
+    backref=true,
+    maxbibnames=99
+]{biblatex}
 
 % For typesetting grammar rules
 \usepackage[nounderscore]{syntax}
@@ -24,6 +30,8 @@
 
 \usepackage{minted}
 \usemintedstyle{friendly}
+
+\addbibresource{bibliography.bib}
 
 \input{macros.tex}
 
@@ -45,6 +53,8 @@
 
 \appendix
 \input{grammar}
+
+\printbibliography{}
 
 \listoftodos{}
 
