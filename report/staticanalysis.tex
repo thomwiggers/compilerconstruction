@@ -37,12 +37,32 @@ Listing~\ref{lst:typecheckunaryoperations} shows how this is applied for unary o
     \caption{Type checking unary operations}\label{lst:typecheckunaryoperations}
 \end{listing}
 
-\todo[inline]{How checked types}
+We almost fully implemented type checking.
+Because we moved on to do type inference, most of this code did not end up in the final compiler.
 
 \section{Type Inference}
-\todo[inline]{Credit that tutorial, explain algorithm}
 
-\section{Type Rules}
+While type analysis is easy, it requires the programmer to specify many things in great detail while she is writing a program.
+This results in lot of code that should be completely obvious.
+It is not necessary to specify in \spl{Int bla = 3;} that \spl{bla} is of type \spl{Int}: this can be easily inferred from the literal \spl{3}.
+Requiring to strictly specify types also may lead to having to write several copies of functions.
+When writing a function like \spl/id (a) { return a; }/ it would be convenient to have it work for all types, but in languages that only do type checking it is usually not possible to write such a function down.
+
+The general approach of type inference is to instead of deciding at every point if something is decidable, to generate constraints that the operations and functions should meet.
+These constraints can thus be more general than concrete types.
+By using information found in later sections of the program, these constraints can then be refined.
+
+We implemented Hindley-Milner type inference following the approach laid out in~\cite{writeyouahaskelltypeinf}.
+He implements type inference for an untyped lambda calculus, a language that is quite a lot simpler than SPL\@.
+But as he writes what he is doing fairly clearly and chooses his data structures well, we were able to extend this to SPL quite easily.
+
+Hindley-Milner type inference works by applying a set of type rules to the lines of code.
+When something isn't completely known, this is resolved by inserting a \emph{type variable}.
+These variables will then later be \emph{unified} with (concrete) type information to get \emph{substitutions} that can be mapped over the environment again.
+By doing this, we apply the knowledge we gain in later bits of code to essentially check the previous bits of code, as substitutions only exist if two types are unifiable.
+We will discuss the type rules for SPL in Section~\ref{sec:typerules}.
+
+\section{Type Rules}\label{sec:typerules}
 
 \section{Reflection}
 \todo[inline]{Haskell is great. No error when specified type is more general than expression, time wasted on checking, poor error messages}
