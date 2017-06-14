@@ -69,13 +69,14 @@ We are going to need these for a lot of things, like declarations and function d
 \[
 \infer{\Gamma \vdash a : \sigma}{(a, \sigma) \in \{(\mbox{`Bool'}, Bool), (\mbox{`Int'}, Int), (\mbox{`Char'}, Char)\} }
 \]
-We also need a version for lists and tuples:
+We also need a version for lists and tuples.
+These can also be used for their expressions.
 \[
 \infer{\Gamma \vdash [a] : [\sigma]}{\Gamma \vdash a : \sigma}\qquad
 \infer{\Gamma \vdash (a, b) : (\sigma, \tau)}{\Gamma \vdash a : \sigma & \Gamma \vdash b : \tau}
 \]
 
-Next, we're going to derive expressions:
+Next, we are going to derive expressions:
 \begin{align*}
     \infer{\Gamma \vdash i : Int}{i \in \mathbb{Z}} &\qquad \mbox{Integer literals} \\
     \infer{\Gamma \vdash c : Char}{c \in \mathsf{Unicode}} &\qquad \mbox{Character literals} \\
@@ -90,10 +91,49 @@ Next, we're going to derive expressions:
     \infer{\Gamma \vdash a\mathsf{.hd} : \sigma}{\Gamma \vdash a : [\sigma]} &\qquad \mbox{List head}\\
     \infer{\Gamma \vdash a\mathsf{.tl} : [\sigma]}{\Gamma \vdash a : [\sigma]} &\qquad \mbox{List tail}\\
     \infer{\Gamma \vdash a\mathsf{.fst} : \sigma}{\Gamma \vdash a : (\sigma, \tau)} &\qquad \mbox{Tuple first}\\
-    \infer{\Gamma \vdash a\mathsf{.snd} : \tau}{\Gamma \vdash a : (\sigma, \tau)} &\qquad \mbox{Tuple second}\\
+    \infer{\Gamma \vdash a\mathsf{.snd} : \tau}{\Gamma \vdash a : (\sigma, \tau)} &\qquad \mbox{Tuple second} \\
+    \infer{\Gamma \vdash [] : [\sigma]}{} &\qquad \mbox{Empty List expression}
 \end{align*}
 
 Declarations are important as they allow to put new things into the state.
+We need to consider following statements and declarations to propagate this definition.
+Here we also see that an ordering of types arises: more general types can be substituted for more concrete types.
+\[
+    \infer{\Gamma \vdash a \; identifier = expr;next}{
+        \Gamma \vdash type : \sigma &
+        \Gamma \vdash expr : \tau &
+        \sigma \sqsubseteq \tau &
+        \Gamma,\; identifier : \sigma \vdash next
+    }
+\]
+
+We need a separate version for declarations with $\mathsf{var}$ as they follow the expression's type instead of the specified type.
+\[
+    \infer{\Gamma \vdash \mathsf{var} \; identifier = expr;next : \tau}{
+        \Gamma \vdash expr : \sigma &
+        \Gamma,\; identifier : \sigma \vdash next
+    }
+\]
+
+Function declarations follow this scheme. For convenience we will consider underspecified functions as functions that have been specified with type variables instead. We will also only consider one argument, but this rule can be extended to no or multiple arguments without loss of generality. We insert the resultant type of this function in the environment when checking the body, to allow asserting return statements.
+We also see the first appearance of the $\forall$ quantifier.
+Using it allows for multiple uses of variable typed functions.
+\[
+    \infer{\Gamma \vdash identifier(arg)\; ::\; argtype\; \to\; rettype\; \{\; body\; \}\; next : \phi}{
+        \begin{array}{r}
+        \Gamma \vdash arg : \sigma \\
+        \Gamma \vdash argtype : \tau\\
+        \sigma \sqsubseteq \tau \\
+        \Gamma \vdash rettype : \rho \\
+        \Gamma, \mathsf{returntype} : \rho \vdash body : \alpha \\
+        \Gamma, identifier :\forall \tau,\;\rho. \tau \to \rho \vdash next : \phi
+        \end{array}
+    }
+\]
+\todo[author=Thom]{Is this correct? I wonder if $\forall \tau, \rho$ works as it should.}
+
+Statements are the remaining meat of the schemes that SPL requires.
+
 
 \section{Reflection}
 \todo[inline]{Haskell is great. No error when specified type is more general than expression, time wasted on checking, poor error messages}
