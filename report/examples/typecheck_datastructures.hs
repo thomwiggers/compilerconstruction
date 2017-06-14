@@ -7,7 +7,6 @@ data SplSimpleTypeR
   = SplTypeConst SplBasicType
   | SplTypeTupleR SplSimpleTypeR SplSimpleTypeR
   | SplTypeListR SplSimpleTypeR
-  | SplTypeVar Int
   | SplVoid
   deriving (Show, Eq)
 

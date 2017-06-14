@@ -6,4 +6,4 @@ typeCheck (SplUnaryExpr op expr) = do
       else fail "Cannot invert a non-Bool"
     SplOperatorNegate -> if (exprType == SplTypeConst SplInt)
       then returnSimple exprType
-      else fail "Cannot invert a non-Int"
+      else fail "Cannot negate a non-Int"
