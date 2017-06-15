@@ -26,6 +26,38 @@ When accessed in a 32-bit fashion, the registers are written as $w0, \ldots, w30
 When accessed in a 64-bit fashion, the registers are written as $x0, \ldots, x30$.
 We will use the 64-bit registers in all generated code.
 
+\section{Working on Heap}
+
+The heap in programs managed by an operating system usually is subject to a lot more restrictions than we were under on the Simple Stack Machine.
+It is not possible to write to arbitrary memory locations, because this will result in illegal memory access exceptions from the operating system.
+Memory on the heap needs to be either be `baked in' to the binary or be requested through calls like \mintinline{c}{malloc}.
+
+\subsection{Global Variables}
+
+For global variables, the convention is to put them as labeled \texttt{.data} sections in the generated assembly code.
+These can only be specified with static contents, however.
+Because SPL allows for arbitrary expressions in the declaration of global variables, we move the initialisation code into a special function during code generation.
+We rename the SPL \spl{main} function to \spl{_splmain} and insert a \spl{main} function that first calls our special \spl{_initGlobals} function.
+It then calls the renamed \spl{_splmain} function to resume execution as usual.
+
+We access global variables by having the program resolve the label to an address and loading or storing the value to or from that address.
+
+\subsection{Heap-allocated objects}
+
+Tuples and lists are allocated on the heap.
+We create a special named section \texttt{.HEAP} in our assembly of a significant size.
+Then we follow the same approach as with SSM\@: we put the address of this region in a register.
+This register is then considered an ``end-of-heap''-pointer.
+When a tuple or list is stored, we write the elements to the location pointed at by this pointer.
+The end-of-heap-pointer register is copied to the variable register.
+The pointer is then incremented, such that it points to free heap space again.
+
+\subsection{Printing}
+
+For printing \spl{Int} and \spl{Char} values we insert handwritten assembly functions into the generated code.
+For integers, our function \spl{printInt(i)} calls libc's \mintinline{c}{printf} as \mintinline{c}{printf("%d\n", i)}
+
+
 \section{Calling Convention}
 
 We follow the C calling convention as defined in~\cite{callingconvention}.
@@ -71,6 +103,17 @@ Since on every line it is known what registers are not needed anymore, we can dr
 That way we do not assign values to registers for longer than necessary.
 
 \section{Incorporating the Calling Convention}
+
+The register allocator needs to know what the inputs are.
+In principle it should also be able to move them to other registers if necessary.
+For every function entry we therefor generate a \asm{mov} for each argument, from the hardware register in which it is passed in to a pseudo-register named after the argument.
+
+Before every function call we just spill all the caller-saved hardware registers.
+After this, we again generate \asm{mov}s, this time from the pseudo-registers that hold the arguments to the hardware registers that they should go on.
+
+Unfortunately, our register allocator currently is not capable of handling the extra constraints this puts on register allocation.
+This leads to functions with multiple arguments sometimes getting their arguments mixed up.
+This obviously leads to problems.
 
 \todo[inline,author=Thom]{Describe how we move registers, and how it breaks}
 
