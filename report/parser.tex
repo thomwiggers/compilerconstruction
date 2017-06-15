@@ -1,7 +1,38 @@
 \chapter{Parser}
 \todo[inline]{Dibs Aaron}
 
-\section{Transforming the grammar}
+\section{Changes to the grammar}
+
+In order to successfully implement an $LL$ parser, we first needed to eleminate left-recursive elements from the original SPL grammar.
+The elements in question were located in the \textsf{FArgs}, \textsf{Field}, and \textsf{Expr} rules.
+
+The first two of these were trivial to change.
+However, the latter required us to merge the binary operation clause with the \textsf{Op2} rule, yielding a new \textsf{BinOp} rule.
+
+For convenience, we will print the original and modified rules here.
+
+\begin{grammar}
+<FArgs> ::= [ <FArgs> `,' ] <id> \\
+\textdownarrow
+
+<FArgs> ::= <id> [ `,' <FArgs> ]
+
+<Field> ::= [ <Field> `.' (`hd' | `tl' | `fst' | `snd') ] \\
+\textdownarrow
+
+<Field> ::= [ `.' (`hd' | `tl' | `fst' | `snd') <Field> ]
+\end{grammar}
+
+Additionally, the \textsf{FunType} rule was modified to make its arrow optional for functions without any arguments:
+
+
+\begin{grammar}
+<FunType> ::= [ <FTypes> ] `\textrightarrow' <RetType> \\
+\textdownarrow
+
+<FunType> ::= [ <FTypes> `\textrightarrow' ] <RetType>
+\end{grammar}
+
 \todo[inline]{left recursion: function argument, expressions, fields\\ refer to grammar in appendix}
 
 \section{Parser Combinators}

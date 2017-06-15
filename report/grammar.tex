@@ -17,8 +17,8 @@
 <RetType> ::= <Type>
 		\alt `Void'
 
+% <FunType> ::= [ <FTypes> ] `\textrightarrow' <RetType>
 <FunType> ::= [ <FTypes> `\textrightarrow' ] <RetType>
-\todo[author=Thom]{Ik heb hier de pijl alleen verplicht gemaakt als er een argumenttype is}
 
 <FTypes> ::= <Type> [ <FTypes> ]
 
@@ -51,7 +51,8 @@
 	\alt `[]'
 	\alt `(' <Exp> `,' <Exp> `)'
 
-<Field> ::= [ `.' (`hd' | `tl' | `fst' | `snd') <Field>]
+% <Field> ::= [ <Field> `.' (`hd' | `tl' | `fst' | `snd') ]
+<Field> ::= [ `.' (`hd' | `tl' | `fst' | `snd') <Field> ]
 
 <FunCall> ::= <id> `(' [ <ActArgs> ] `)'
 
@@ -59,7 +60,7 @@
 
 <Op2> ::= `+' | `-' | `*' | `/' | `\%'
 	\alt `==' | `\textless' | `\textgreater' | `\textless=' | `\textgreater=' | `!='
-	\alt `\&\&' | `||'
+	\alt `\&\&' | `\textbar\textbar'
 	\alt `:'
 
 <Op1> ::= `!' | `-'
