@@ -15,6 +15,7 @@ To ease the assembly generation process, we first translated the AST to a data s
 
 To start off, we require a few boilerplate data types that represent registers, labels, and immediates:
 
+%\begin{listing}
 \begin{minted}[frame=single]{Haskell}
 data SplPseudoRegister
   -- simple register
@@ -35,6 +36,8 @@ type SplLabel = String
 data SplImm = SplImmInt Integer | SplImmBool Bool | SplImmChar Char
   deriving Show
 \end{minted}
+%\caption{Definitions for pseudo-registers, labels and immediates.}
+%\end{listing}
 
 As registers are yet to be allocated in this phase, we introduce a pseudo-register data type.
 We have opted to represent fields as encapsulated pseudo-registers, as they closely relate to load and store operations.
@@ -46,6 +49,7 @@ However, as we will see in the next chapter, they are required to generate code 
 With these boilerplate types, we can start translating the program.
 We will be using the following data type to represent it:
 
+\begin{listing}
 \begin{minted}[frame=single]{Haskell}
 data SplInstruction
   = SplFunction SplLabel [SplPseudoRegister] SplIR
@@ -71,14 +75,26 @@ data SplInstruction
   | SplTupleConstr SplPseudoRegister SplPseudoRegister
                 -- right
                    SplPseudoRegister
+
+type SplIR = [SplInstruction]
 \end{minted}
+\caption{Definitions for instructions in IR.}
+\end{listing}
 
-With this, we can represent the entire program as a list of \spl{SplInstruction}s.
+With this, we can represent (sections of) the program as a list of \spl{SplInstruction}s, or \spl{SplIR} for short.
+On first glance, the \spl{SplInstruction} data type still looks relatively high-level, of course.
+However, looks can be deceiving.
 
-\todo[author=Aaron,inline]{Expand on this!}
+The most notable important changes are found in the way expressions are transformed.
+Expressive assignment statements are unrolled into multiple \spl{SplBinaryOperation}s and \spl{SplUnaryOperation}s as needed.
+Note that all variable identifiers are replaced with pseudo-registers of the same name.
+Intermediaries generated while unrolling are assigned to a pseudo-register with a unique name from a central pool.
 
+In order to handle tuples efficiently tuples further down the line, we introduce an \spl{SplTupleConstr} construct.
+This ensures the pair of (pseudo-)registers is kept together when allocating memory.
 
-\todo[inline]{Idea: simplify to something that looks more like asm. Unrolls stuff, less fancy constructs, explain what remains.}
+Finally, \spl{SplMov} and \spl{SplMovImm} are introduced to generate loads from registers and immediates, respectively.
+These may, for example, be used to place arguments on the stack, before calling a function with an \spl{SplCall}.
 
 
 \section{Simple Stack Machine}
