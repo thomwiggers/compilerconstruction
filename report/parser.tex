@@ -72,7 +72,82 @@ The \textsf{FunType} rule was modified to make its arrow optional for functions 
 \end{framed}
 
 \section{Parser Combinators}
-\todo[inline]{parser combinators, how do they work?, megaparsec}
+
+One of our main reasons for choosing Haskell was the prospect of being able to work with parser combinators.
+Combined with Haskell's powerful type system, these combinators make processing a source file into an abstract syntax tree (AST) particularly easy.
+
+Rather than implementing combinators ourselves, we opted to use the popular MegaParsec library.
+This is a fork of the popular, but no longer maintained, Parsec library.
+Added features include full Unicode support, as well as better testing equipment for use with HSpec.
+
+In the rest of this section, we will explain the workings of these combinators by example.
+
+Consider the data structure in listing \ref{lst:splfield_ast}, defining the \textsf{Field} component of our grammar:
+
+\begin{listing}
+\begin{framed}
+\begin{minted}{haskell}
+data SplField = SplFieldHd  SplField
+              | SplFieldTl  SplField
+              | SplFieldFst SplField
+              | SplFieldSnd SplField
+              | SplFieldNone
+\end{minted}
+\end{framed}
+\caption{Definition of SplField in SplAST.hs.}
+\label{lst:splfield_ast}
+\end{listing}
+
+To parse such a field, the \spl{field} function is invoked after reading an identifier.
+Listing \ref{lst:splfield_parser} shows the code for this function:
+
+\begin{listing}
+\begin{framed}
+\begin{minted}{haskell}
+field :: Parser SplField
+field = char '.' *> (
+            readKw "hd"  *> (SplFieldHd  <$> field)
+        <|> readKw "tl"  *> (SplFieldTl  <$> field)
+        <|> readKw "fst" *> (SplFieldFst <$> field)
+        <|> readKw "snd" *> (SplFieldSnd <$> field)
+    ) <* sc
+    <|> return SplFieldNone
+    where
+        readKw :: String -> Parser ()
+        readKw w = string w *> notFollowedBy alphaNumChar
+\end{minted}
+\end{framed}
+\caption{Definition of the \texttt{field} parser in \texttt{SplParser.hs}.}
+\label{lst:splfield_parser}
+\end{listing}
+
+From quickly reading the funtion, it becomes apparent that it covers all five possible fields: head, tail, first, and second.
+Three helper functions are used:
+\begin{itemize}
+	\setlength{\itemsep}{0pt}
+	\item \texttt{char}, which tries to read one Unicode character.
+	\item \texttt{sc}, which greedily reads and discards white\textbf{s}paces and \textbf{c}omments.
+	\item \texttt{readKw}, which reads a particular \textbf{k}ey\textbf{w}ord.
+\end{itemize}
+
+The \spl{field} function has two main branches.
+At the start, we try to read a `.' to indicate a field.
+If no period can be read, the \spl{SplFieldNone} token is yielded.
+
+Otherwise, we enter a branch with the \texttt{*>} combinator.
+In the branch, we try to read either of four keywords, followed by another word using the \texttt{<\$>} binding operator.
+Note that the \texttt{<|>} combinator facilitates in branching.
+
+Because we used the \texttt{*>} combinator, the result of the branch is yieled as the result of the outer block. If no result is obtained, a parse error is generated.
+
+Finally, we consume any remaining whitespace or comments using the aforementioned \spl{sc} helper function.
+
+Note that, at this stage, we do not verify whether \spl{hd} or \spl{tl} is applied to a list, nor whether \spl{fst} or \spl{snd} is applied to a tuple.
+This is left for the type inferencer, which the next chapter will cover.
+
+\section{Testing}
+
+\todo[inline]{Testing, how does it work?}
 
 \section{Pretty Printing}
 \todo[inline]{printer combinators}
