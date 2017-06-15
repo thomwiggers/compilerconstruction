@@ -74,7 +74,7 @@ The \textsf{FunType} rule was modified to make its arrow optional for functions 
 \section{Parser Combinators}
 
 One of our main reasons for choosing Haskell was the prospect of being able to work with parser combinators.
-Combined with Haskell's powerful type system, these combinators make processing a source file into an abstract syntax tree (AST) particularly easy.
+Combined with Haskell's powerful type system, these combinators make processing a source file into an algebraic data type, in this case an abstract syntax tree (AST), particularly easy.
 
 Rather than implementing combinators ourselves, we opted to use the popular MegaParsec library.
 This is a fork of the popular, but no longer maintained, Parsec library.
@@ -147,9 +147,49 @@ This is left for the type inferencer, which the next chapter will cover.
 
 \section{Testing}
 
-\todo[inline]{Testing, how does it work?}
+As previously mentioned, a strict typing system like Haskell's allows us to easily transform source code into an algebric data type.
+This allows us to test the parser relatively easily with the use of Haskell's HSpec testing system.
+
+As an example, we will revisit the field parser discussed in the previous section. Consider the specifications in listing \ref{lst:splfield_spec}:
+
+\begin{listing}
+\begin{framed}
+\begin{minted}{haskell}
+spec :: Spec
+spec = do
+  // ...
+  describe "expressions" $ do
+  // ...
+    it "parses identifiers" $
+      parseExpr "example" `shouldParse`
+        (SplIdentifierExpr "example" SplFieldNone)
+
+    it "parses identifiers with fields" $
+      parseExpr "example.hd" `shouldParse`
+        (SplIdentifierExpr "example" (SplFieldHd (SplFieldNone)))
+
+    it "parses identifiers with nested fields" $
+      parseExpr "example.hd.tl" `shouldParse`
+        (SplIdentifierExpr "example"
+          (SplFieldHd $ SplFieldTl $ SplFieldNone))
+  // ...
+\end{minted}
+\end{framed}
+\caption{Tests for the \texttt{field} parser in \texttt{ParserSpec.hs}.}
+\label{lst:splfield_spec}
+\end{listing}
+
+The specification denotes the expected parse tree for three expressions: the first one having no field, the second one with one field, and the last one having an extra nested field.
+
+Our full AST data type is covered by HSpec specifications.
+Hence, any changes in the parser code can immediately be tested for adverse effects.
+Indeed, if a bug is found in the parser, another test can be added to prevent said bug from re-occurring as a regression.
 
 \section{Pretty Printing}
+
+While Haskell strict typing system like allows us to easily transform source code into an algebric data type, the reverse is also possible.
+To do this, we make use of \emph{printer combinators}.
+
 \todo[inline]{printer combinators}
 
 \section{Reflection}
