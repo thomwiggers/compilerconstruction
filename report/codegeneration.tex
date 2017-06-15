@@ -112,6 +112,15 @@ Hence, an element of a list or tuple remains allocated, even if it is no longer 
 
 \subsection{Global Variables}
 
+To accomodate global variables, we reserve a frame on the stack that is exactly the total size of all global variables.
+
+This is done as follows.
+At the start of an SSM program, we push the current stack pointer to register 5.
+We then push each of the global variables to the stack, evaluating its expressions as needed.
+
+While generating assembly code, a virtual stack pointer keeps track of the expected position of the global's value using a zero-based offset from the address in register 5.
+Hence, for the rest of the program's execution, register 5's sole purpose will be to help load and store global variables from their tracked offset.
+
 
 \subsection{Calling Convention}
 
