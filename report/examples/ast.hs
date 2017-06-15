@@ -81,19 +81,3 @@ data SplBinaryOperator = SplOperatorAdd
 data SplUnaryOperator = SplOperatorInvert -- bools
                       | SplOperatorNegate -- ints
     deriving (Show, Eq)
-
-instance Show SplBinaryOperator where
-    show SplOperatorAdd = "+"
-    show SplOperatorSubtract = "-"
-    show SplOperatorMultiply = "*"
-    show SplOperatorDivide = "/"
-    show SplOperatorModulus = "%"
-    show SplOperatorLess = "<"
-    show SplOperatorLessEqual = "<="
-    show SplOperatorEqual = "=="
-    show SplOperatorGreaterEqual = ">="
-    show SplOperatorGreater = ">"
-    show SplOperatorNotEqual = "!="
-    show SplOperatorAnd = "&&"
-    show SplOperatorOr = "||"
-    show SplOperatorCons = ":"
