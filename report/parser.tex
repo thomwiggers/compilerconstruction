@@ -75,6 +75,7 @@ The \textsf{FunType} rule was modified to make its arrow optional for functions 
 
 One of our main reasons for choosing Haskell was the prospect of being able to work with parser combinators.
 Combined with Haskell's powerful type system, these combinators make processing a source file into an algebraic data type, in this case an abstract syntax tree (AST), particularly easy.
+For a complete overview of the AST, please see Appendix \ref{ch:ast}.
 
 Rather than implementing combinators ourselves, we opted to use the popular MegaParsec library.
 This is a fork of the popular, but no longer maintained, Parsec library.
@@ -191,10 +192,9 @@ While Haskell strict typing system like allows us to easily transform source cod
 Although Haskell allows printing data types easily through its \spl{Show} classes, these are not context sensitive.
 Hence, through these it is more difficult to print nested blocks.
 To achieve this, we make use of \emph{printer combinators}.
+We opted to use Haskell's built-in \texttt{Text.PrettyPrint} library.
 
 For illustrative purposes, we list the code used to print a \textsf{While} block in listing \ref{lst:splprettyprinter}.
-
-\pagebreak
 
 \begin{listing}
 \begin{framed}
@@ -221,4 +221,18 @@ Most of the helper functions have self-explanatory names.
 Note that a wrapping \texttt{braces} function exists as well, but due to currying we cannot use it in combination with the \texttt{nest} function.
 
 \section{Reflection}
-\todo[inline]{combinators are awesome. AST not fancy enough: records for extensibility, include locations for error messages}
+
+We were pleasantly surprised with the combinators' versatility.
+Most notably for their use in the parsing process, but also for doing the reverse in the pretty printer.
+
+Looking back, there are definite points of improvements for our parser and its data structures, however.
+
+When our project consisted of merely a parser, it was fine to rely on MegaParsec's built-in error handler.
+With this in mind, we did not consider needing to store additional information in the AST, such as the original position in the source code, or indeed the original token.
+As our compiler progressed, in particular the type inferencer, it became apparent that this information was now missing.
+However, as the AST was in use in some form by the majority of functions, it also became clear that adding this information at this stage would be very time consuming.
+This limitation culminated in us not being able to store inferred type information in the AST without compromise
+
+Should the need arise to implement another compiler in Haskell, we take with us the knowledge that we should use a more abstract data type for our AST.
+While retaining the labeled tree structure, we could make use of records to store additional information in an extensible manner.
+Indeed, when the need arises, the record structure in question can then be extended with e.g. type annotations.
