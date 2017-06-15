@@ -4,3 +4,46 @@
 \todo[inline]{Why Haskell, division of work, pair programming, “statistics”}
 
 In each chapter, we will reflect how we would do things differently next time.
+
+
+\section*{Statistics}
+
+\begin{table}[ht!]
+	\centering
+	\begin{tabular}{|l|r|}
+		\hline
+		\textbf{Parser} 	& \# \\
+		\hline
+		SplAST.hs 			& 96 \\
+		SplParser.hs 		& 245 \\
+		SplPrettyPrinter.hs & 105 \\
+
+		\hline
+		\textbf{Type Inferencing} & \# \\
+		\hline
+		SplTypeChecker.hs 	& 610 \\
+
+		\hline
+		\textbf{Code Generation (SSM)} & \# \\
+		\hline
+		SplIR.hs 			& 96 \\
+		SplASTtoIR.hs 		& 155 \\
+		SplSSM.hs 			& 137 \\
+		SplIRtoSSM.hs 		& 424 \\
+
+		\hline
+		\textbf{Code Generation (AArch64)} & \# \\
+		\hline
+		SplAArch64.hs 		& 117 \\
+		SplIRtoAArch64.hs 	& 377 \\
+		SplAArch64Allocator.hs & 243 \\
+		SplAArch64StdLib.hs & 72 \\
+
+		\hline
+		\textbf{Front-end I/O} & \# \\
+		\hline
+		Main.hs 			& 203 \\
+		\hline
+	\end{tabular}
+	\caption{LOC statistics for Haskell source files}
+\end{table}
