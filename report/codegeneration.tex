@@ -125,14 +125,22 @@ We then push each of the global variables to the stack, evaluating its expressio
 While generating assembly code, a virtual stack pointer keeps track of the expected position of the global's value using a zero-based offset from the address in register 5.
 Hence, for the rest of the program's execution, register 5's sole purpose will be to help load and store global variables from their tracked offset.
 
-Note that, as mentioned in the previous section, lists and tuples live on the heap. Hence, if a global variable is of either type, only a pointer (i.e. an address) will be allocated.
+Note that, as mentioned in the previous section, lists and tuples live on the heap.
+Hence, if a global variable is of either type, only a pointer (i.e. an address) will be allocated.
 
 
 \subsection{Calling Convention}
 
+As the SSM works primarily with the stack, we do not need to generate any spilling code for general-purpose registers.
+Hence, calling a function is done by loading all its arguments onto a new stack frame, followed directly by the BSR (Branch SubRoutine) call to the function in question.
 
+Per convention, we use register 4 as a \emph{result register}.
+Hence, after a function returns, we load the value of this register onto the stack.
+There are two exceptions to this: the function can be a void type, or called as a function statement.
+In either case, no result is saved; therefore no code is generated either.
 
-\todo[inline]{Explain how registers aren't needed, how stack works, globals on stack as pseudo-heap, lists and tuples on heap, calling convention}
+Like global variables before, lists and tuples for arguments or local variables live on the heap as well.
+Hence, if a global variable is of either type, only a pointer (i.e. an address) will be passed to the function.
 
 
 \section{Reflection}
