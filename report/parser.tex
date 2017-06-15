@@ -188,9 +188,37 @@ Indeed, if a bug is found in the parser, another test can be added to prevent sa
 \section{Pretty Printing}
 
 While Haskell strict typing system like allows us to easily transform source code into an algebric data type, the reverse is also possible.
-To do this, we make use of \emph{printer combinators}.
+Although Haskell allows printing data types easily through its \spl{Show} classes, these are not context sensitive.
+Hence, through these it is more difficult to print nested blocks.
+To achieve this, we make use of \emph{printer combinators}.
 
-\todo[inline]{printer combinators}
+For illustrative purposes, we list the code used to print a \textsf{While} block in listing \ref{lst:splprettyprinter}.
+
+\pagebreak
+
+\begin{listing}
+\begin{framed}
+\begin{minted}{haskell}
+  printStmt :: SplStmt -> Doc
+  // ...
+  printStmt (SplWhileStmt cond stmts) =
+        text "while"
+    <+> parens (printExpr cond)
+    <+> lbrace
+    $+$ (nest 4 $ printStmts stmts)
+    $+$ rbrace
+\end{minted}
+\end{framed}
+\caption{Pretty printer for \texttt{SplWhileStmt} in \texttt{SplPrettyPrinter.hs}.}
+\label{lst:splprettyprinter}
+\end{listing}
+
+In the listing, two notable combinators are used: \texttt{<+>} and \texttt{\$+\$}. The former combines a \spl{Doc} with a space, collapsing the spaces into one if two occur side-by-side. The latter does the same, but with line endings instead of spaces.
+
+Most of the helper functions have self-explanatory names.
+\texttt{parens} wraps a given \spl{Doc} between parentheses.
+\texttt{lbrace} and \texttt{rbrace} respectively insert a left and right brace.
+Note that a wrapping \texttt{braces} function exists as well, but due to currying we cannot use it in combination with the \texttt{nest} function.
 
 \section{Reflection}
 \todo[inline]{combinators are awesome. AST not fancy enough: records for extensibility, include locations for error messages}
