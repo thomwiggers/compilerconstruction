@@ -7,7 +7,7 @@ In this section we will describe the architecture and how we approached compilin
 
 Our development platform is the ODROID-C2.
 It is a Cortex-A53-based Android development board, but it can also run Linux.
-It provides a quadcore CPU running at 1536 MHz and 2 gigabytes of RAM\@.
+It provides a quad-core CPU running at 1536 MHz and 2 gigabytes of RAM\@.
 
 AArch64 provides 31 general-purpose registers $r0, \ldots, r30$.
 This is excluding the stack pointer or the program counter.
@@ -56,7 +56,7 @@ For printing \spl{Int} and \spl{Char} values we insert handwritten assembly func
 For integers, our function \spl{printInt(i)} calls libc's \mintinline{c}{printf} as \mintinline{c}{printf("%d\n", i)}
 
 Characters are printed via a call to libc's \mintinline{c}{putwchar}.
-This function supports unicode characters, so it allows us to output any character we could imagine.
+This function supports Unicode characters, so it allows us to output any character we could imagine.
 Using this function does require to set the locale of the program.
 We put this code in our special startup \mintinline{c}{main} function.
 
@@ -91,7 +91,7 @@ Our algorithm can be briefly described as follows: first divide the program into
 Then we determine what registers are in use for every line of IR\@.
 This information is then used to assign registers.
 
-We determine the lifecycle of variables in bottom-up fashion.
+We determine the life cycle of variables in bottom-up fashion.
 For each block, we start at the bottom with an empty list of live registers.
 After all, at the end a function will have returned its result.
 Then, for each line, we collect the inputs and the output pseudo-registers.
@@ -127,7 +127,7 @@ After that applying an algorithm to allocate registers based on graph colouring 
 The approach known as Iterated Register Coalescing by George and Appel~\cite{IRC} seemed promising.
 It also includes a solution for the problem of determining what registers to spill, which is in itself an NP-hard problem.
 
-After this futher a possible further improvement could be instruction scheduling, although a lack of documentation on the instruction characteristics of AArch64 makes this difficult.
+After this, a possible further improvement could be instruction scheduling, although a lack of documentation on the instruction characteristics of AArch64 makes this difficult.
 Improving the toolchain to produce binaries instead of assembly code that still needs to be fed to a compiler like Clang or GCC would also improve the workflow.
 We currently need them to figure out the linking to the used library subroutines.
 

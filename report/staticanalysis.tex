@@ -118,7 +118,7 @@ We need a separate version for declarations with $\mathsf{var}$ as they follow t
     }
 \]
 
-Function declarations follow this scheme. For convenience we will consider underspecified functions as functions that have been specified with type variables instead. We will also only consider one argument, but this rule can be extended to no or multiple arguments without loss of generality. We insert the resultant type of this function in the environment when checking the body, to allow asserting return statements.
+Function declarations follow this scheme. For convenience we will consider under specified functions as functions that have been specified with type variables instead. We will also only consider one argument, but this rule can be extended to no or multiple arguments without loss of generality. We insert the resultant type of this function in the environment when checking the body, to allow asserting return statements.
 We also see the first appearance of the $\forall$ quantifier.
 Using it allows for multiple uses of variable typed functions.
 \[
@@ -138,7 +138,7 @@ Using it allows for multiple uses of variable typed functions.
 \subsection{Statements}
 
 Statements are the remaining meat of the schemes that SPL requires.
-We start out by infering \spl{if}-statements.
+We start out by inferring \spl{if}-statements.
 We will consider \spl{if}-statements that have not been specified with an \spl{else} clause as been having specified with an empty \spl{else} clause.
 \[
     \infer{\Gamma \vdash \mathsf{if}\; (\; expr\;)\; \{\; thenStmts\; \}\;
@@ -203,7 +203,7 @@ For the continuation of declarations and functions to work, we need an empty sta
     \infer{\Gamma \vdash \lambda}{}
 \]
 
-Finally, we need generalization:
+Finally, we need generalisation:
 \[
     \infer{\Gamma \vdash e : \forall a.\; a}{
         \Gamma \vdash e : \sigma &
@@ -229,7 +229,7 @@ As Listing~\ref{lst:typecheckunaryoperations} shows, it makes the recursion and 
 But we definitely would do some things different if we were to try this again.
 Because our AST does not contain any information on the location of pieces of syntax, error messages become rather meaningless and hard to debug.
 Additionally, because our type inference and the checking of generated constraints are all immediate and very local, it is difficult to generate more than one error message.
-We also have a hard time allowing multual recursion or usage of functions before we process their definition, because of the way we walk the syntax tree.
+We also have a hard time allowing mutual recursion or usage of functions before we process their definition, because of the way we walk the syntax tree.
 
 Starting out with type checking helped gain some understanding of how to walk the syntax tree, but in the end we suspect that it cost us much more time than it saved us when we continued with type inference.
 Most of the code we had for type checking we threw aside when we started on type inference.
