@@ -86,15 +86,13 @@ In the rest of this section, we will explain the workings of these combinators b
 Consider the data structure in listing \ref{lst:splfield_ast}, defining the \textsf{Field} component of our grammar:
 
 \begin{listing}
-\begin{framed}
-\begin{minted}{haskell}
+\begin{minted}[frame=single]{haskell}
 data SplField = SplFieldHd  SplField
               | SplFieldTl  SplField
               | SplFieldFst SplField
               | SplFieldSnd SplField
               | SplFieldNone
 \end{minted}
-\end{framed}
 \caption{Definition of SplField in SplAST.hs.}
 \label{lst:splfield_ast}
 \end{listing}
@@ -103,8 +101,7 @@ To parse such a field, the \spl{field} function is invoked after reading an iden
 Listing \ref{lst:splfield_parser} shows the code for this function:
 
 \begin{listing}
-\begin{framed}
-\begin{minted}{haskell}
+\begin{minted}[frame=single]{haskell}
 field :: Parser SplField
 field = char '.' *> (
             readKw "hd"  *> (SplFieldHd  <$> field)
@@ -117,7 +114,6 @@ field = char '.' *> (
         readKw :: String -> Parser ()
         readKw w = string w *> notFollowedBy alphaNumChar
 \end{minted}
-\end{framed}
 \caption{Definition of the \texttt{field} parser in \texttt{SplParser.hs}.}
 \label{lst:splfield_parser}
 \end{listing}
@@ -154,8 +150,7 @@ This allows us to test the parser relatively easily with the use of Haskell's HS
 As an example, we will revisit the field parser discussed in the previous section. Consider the specifications in listing \ref{lst:splfield_spec}:
 
 \begin{listing}
-\begin{framed}
-\begin{minted}{haskell}
+\begin{minted}[frame=single]{haskell}
 spec :: Spec
 spec = do
   // ...
@@ -175,7 +170,6 @@ spec = do
           (SplFieldHd $ SplFieldTl $ SplFieldNone))
   // ...
 \end{minted}
-\end{framed}
 \caption{Tests for the \texttt{field} parser in \texttt{ParserSpec.hs}.}
 \label{lst:splfield_spec}
 \end{listing}
@@ -197,8 +191,7 @@ We opted to use Haskell's built-in \texttt{Text.PrettyPrint} library.
 For illustrative purposes, we list the code used to print a \textsf{While} block in listing \ref{lst:splprettyprinter}.
 
 \begin{listing}
-\begin{framed}
-\begin{minted}{haskell}
+\begin{minted}[frame=single]{haskell}
   printStmt :: SplStmt -> Doc
   // ...
   printStmt (SplWhileStmt cond stmts) =
@@ -208,7 +201,6 @@ For illustrative purposes, we list the code used to print a \textsf{While} block
     $+$ (nest 4 $ printStmts stmts)
     $+$ rbrace
 \end{minted}
-\end{framed}
 \caption{Pretty printer for \texttt{SplWhileStmt} in \texttt{SplPrettyPrinter.hs}.}
 \label{lst:splprettyprinter}
 \end{listing}
