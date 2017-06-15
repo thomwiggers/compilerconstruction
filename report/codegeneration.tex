@@ -36,10 +36,15 @@ data SplImm = SplImmInt Integer | SplImmBool Bool | SplImmChar Char
   deriving Show
 \end{minted}
 
-With this, we can start translating the program.
-We will be using the following data type to represent it.
+As registers are yet to be allocated in this phase, we introduce a pseudo-register data type.
+We have opted to represent fields as encapsulated pseudo-registers, as they closely relate to load and store operations.
+Furthermore, we introduce an \spl{EmptyList} register that will effectively yield a null-pointer.
 
-\todo[author=Aaron,inline]{Expand on this!}
+Note that we will not be allocating many registers for the Simple Stack Machine (SSM), as most of the SSM's instructions operate directly on the stack.
+However, as we will see in the next chapter, they are required to generate code for real hardware.
+
+With these boilerplate types, we can start translating the program.
+We will be using the following data type to represent it:
 
 \begin{minted}[frame=single]{Haskell}
 data SplInstruction
