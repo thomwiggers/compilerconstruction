@@ -1,10 +1,84 @@
 \chapter{Code Generation}
-\todo[inline]{Dibs Aaron}
+
+This chapter details on what is arguably the ultimate goal of the compiler: the code generation process.
+Using the type-checked abstract syntax tree, we generate an immediate representation.
+In turn, that immediate representation, or IR, is then translated into assembly.
+
+This chapter details the process from generating the IR to assembly code for the Simple Stack Machine, SSM.
+
+
 \section{Intermediate Representation}
+
+Since the end of the previous chapter, we have been able to verify whether a program is valid type-wise.
+The program is still represented by the same AST we started out with during the parser phase, however.
+To ease the assembly generation process, we first translated the AST to a data structure that looks more like actual assembly.
+
+To start off, we require a few boilerplate data types that represent registers, labels, and immediates:
+
+\begin{minted}[frame=single]{Haskell}
+data SplPseudoRegister
+  -- simple register
+  = Reg String
+  -- ex: TupleLeft (TupleRight (Reg myTuple))
+  | TupleFst SplPseudoRegister
+  | TupleSnd SplPseudoRegister
+  -- list value and pointer to tail
+  | ListHd SplPseudoRegister
+  | ListTl SplPseudoRegister
+  -- ex: ListHd (TupleFst (Reg myTupleWithAListAndField))
+  -- for tail empty
+  | EmptyList
+  deriving (Show, Eq)
+
+type SplLabel = String
+
+data SplImm = SplImmInt Integer | SplImmBool Bool | SplImmChar Char
+  deriving Show
+\end{minted}
+
+With this, we can start translating the program.
+We will be using the following data type to represent it.
+
+\todo[author=Aaron,inline]{Expand on this!}
+
+\begin{minted}[frame=single]{Haskell}
+data SplInstruction
+  = SplFunction SplLabel [SplPseudoRegister] SplIR
+  -- if   unique   cond              Then  Else
+  | SplIf SplLabel SplPseudoRegister SplIR SplIR
+  -- while   unique   cond                       body
+  | SplWhile SplLabel (SplIR, SplPseudoRegister) SplIR
+  -- binop             op                dest
+  | SplBinaryOperation SplBinaryOperator SplPseudoRegister
+                    -- a                 b
+                       SplPseudoRegister SplPseudoRegister
+  -- unary op         op               dest
+  | SplUnaryOperation SplUnaryOperator SplPseudoRegister
+                   -- src
+                      SplPseudoRegister
+  | SplRet (Maybe SplPseudoRegister)
+  -- mov   dest              src
+  | SplMov SplPseudoRegister SplPseudoRegister
+  | SplMovImm SplPseudoRegister SplImm
+  | SplCall SplLabel (Maybe SplPseudoRegister)
+            [SplPseudoRegister]
+  -- make a new tuple     name           left
+  | SplTupleConstr SplPseudoRegister SplPseudoRegister
+                -- right
+                   SplPseudoRegister
+\end{minted}
+
+With this, we can represent the entire program as a list of \spl{SplInstruction}s.
+
+\todo[author=Aaron,inline]{Expand on this!}
+
+
 \todo[inline]{Idea: simplify to something that looks more like asm. Unrolls stuff, less fancy constructs, explain what remains.}
+
 
 \section{Simple Stack Machine}
 \todo[inline]{Explain how registers aren't needed, how stack works, globals on stack as pseudo-heap, lists and tuples on heap, calling convention}
+
 
 \section{Reflection}
 \todo[inline]{IR too simple: loss of context, temporaries hard to distinguish (LDC, LDL) and thus aren't thrown away as they are treated like regular vars.}
