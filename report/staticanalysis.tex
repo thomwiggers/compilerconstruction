@@ -4,9 +4,6 @@ In this chapter we will discuss how we approached the static analysis in our com
 We started out doing Type Checking, but later implemented the more advanced Type Inference.
 We will then show the inference rules and reflect on our implementation.
 
-\todo[inline]{Dibs Thom}
-\todo[inline]{ergens scoping}
-
 \section{Type Checking}
 
 Type checking is a fairly simple analysis of a program.
@@ -41,6 +38,7 @@ We almost fully implemented type checking.
 Because we moved on to do type inference, most of this code did not end up in the final compiler.
 
 \section{Type Inference}
+\todo[author=Thom,inline]{Need we mention more? Show code?}
 
 While type analysis is easy, it requires the programmer to specify many things in great detail while she is writing a program.
 This results in lot of code that should be completely obvious.
@@ -86,7 +84,7 @@ We can derive their rules as follows:
     \infer{\Gamma \vdash b : Bool}{b \in \{\mbox{`True', `False'}\}} &\qquad \mbox{Boolean literals} \\
 \end{align*}
 \begin{align*}
-    \infer{\Gamma \vdash\; \sim b : Bool}{\Gamma \vdash b : Bool} &\qquad \mbox{Unary inversion}\\
+    \infer{\Gamma \vdash\; !b : Bool}{\Gamma \vdash b : Bool} &\qquad \mbox{Unary inversion}\\
     \infer{\Gamma \vdash -i : Int}{\Gamma \vdash i : Int} &\qquad \mbox{Unary negation}\\
     \infer{\Gamma \vdash a\; o\; b : \sigma}{\Gamma \vdash a : \sigma & \Gamma \vdash b : \sigma & \sigma \in \{Char, Int\} & o \in \{+, -\}} &\qquad \mbox{Operations on Ints and Chars}\\
     \infer{\Gamma \vdash a\; o\; b : Int}{\Gamma \vdash a : Int & \Gamma \vdash b : Int & o \in \{*, /, \% \}} &\qquad \mbox{Operations on Ints}\\
