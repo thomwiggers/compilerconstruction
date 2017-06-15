@@ -1,12 +1,38 @@
 \chapter{Introduction}
 
-\todo[inline]{Dibs Aaron}
-\todo[inline]{Why Haskell, division of work, pair programming, “statistics”}
+This report details our choices and reflections during the four phases of implementing a compiler for the Simple Programming Language (SPL) in the context of the course \emph{Compiler Construction} at Radboud University, Nijmegen.
 
-In each chapter, we will reflect how we would do things differently next time.
+This introductory chapter aside, we will reflect how we would do things differently next time at the end of each chapter.
+
+\section{Language of Implementation}
+
+From the first sessions, it was clear to both of us that we wanted to write our compiler in a functional programming language.
+The advantages of functional programming languages are numerous, but the one that stands out for us is the strict type system.
+It enforces we implement all variants of the data types it works on, which seemed quite helpful to us, given the prospect of working with large AST tree structures.
+
+We opted to implement our compiler in Haskell, mainly becomes it supports both our platforms (Linux and macOS), and comes with a mature ecosystem.
+This provides us with ample libraries for data types, testing, as well as the parser and printer combinators we will see in the next chapter.
 
 
-\section*{Statistics}
+\section{Test-driven Development}
+
+During development, we aimed to write our program in batches for each phase.
+First, we would write its data structures, followed by extensive tests for the data structures.
+The aim here was to cover all possible instances of the data structures in their basic forms.
+As more functions were implemented, the successful coverage would increase.
+
+We succeeded in applying these principles during the first two phases of the compiler implementation process.
+For the last two phases, we switched completely to a filesystem-based structure with example programs that should compile, and whose output was determined beforehand.
+
+
+\section{Pair Programming}
+
+\todo[inline]{division of work, pair programming}
+
+
+\section{Statistics}
+
+The following table shows the amount of lines of code for each of the Haskell files in our compiler's source tree.
 
 \begin{table}[ht!]
 	\centering
