@@ -213,10 +213,33 @@ Finally, we need generalization:
     }
 \]
 
+
+\subsection{Instantiation}
+
 We already incorporated instantiation in the rules described above where relevant.
 
+While implementing these typing rules we however made a slight mistake.
+In general, they should not allow code like \spl{placeholder bla = 37;}, where the specified type is more general than the derived type of the expression.
+Our unifier however treats these expressions like \spl{var bar = 42;} and derives that the type variable that \spl{placeholder} represents must be a placeholder for \spl{Int}.
+
 \section{Reflection}
-\todo[inline]{Haskell is great. No error when specified type is more general than expression, time wasted on checking, poor error messages}
+
+Doing type checking or type inference in Haskell works pretty well.
+Traversing data structures is something functional languages excel at and handling the state in monads is greatly simplified and clarified by Haskell's \haskellinline{do}-notation.
+As Listing~\ref{lst:typecheckunaryoperations} shows, it makes the recursion and result handling extremely straightforward.
+
+But we definitely would do some things different if we were to try this again.
+Because our AST does not contain any information on the location of pieces of syntax, error messages become rather meaningless and hard to debug.
+Additionally, because our type inference and the checking of generated constraints are all immediate and very local, it is difficult to generate more than one error message.
+We also have a hard time allowing multual recursion or usage of functions before we process their definition, because of the way we walk the syntax tree.
+
+Starting out with type checking helped gain some understanding of how to walk the syntax tree, but in the end we suspect that it cost us much more time than it saved us when we continued with type inference.
+Most of the code we had for type checking we threw aside when we started on type inference.
+While the approach was similar in some ways, it was different enough to prevent any significant reuse.
+
+Because our approach is similar to a fold over the data structure with a single result, we throw out any type information that we gain along the way.
+We later noticed that this put us in a rather unfortunate position in the code generation phase, as we did not have the information needed to decide overloaded function calls.
+If we had kept the type information, for instance transforming SPL to LLVM IR would have been similar to writing a pretty printer.
 
 
 % vim: set ts=4 sw=4 tw=0 et wrap :
