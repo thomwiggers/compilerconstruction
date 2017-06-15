@@ -109,6 +109,10 @@ However, unlike the normal stack, we make use of the heap to allocate lists and 
 At the time of writing, no garbage collection has been implemented.
 Hence, an element of a list or tuple remains allocated, even if it is no longer referred to from the stack.
 
+Per convention, all variables on the stack are exactly the size of one word, 32-bits.
+This includes addresses, booleans, characters, and integers.
+Characters are represented as their ordinal UTF-16 values, integers use two's complement, and booleans are \texttt{0} for \texttt{False} and \texttt{1} for \texttt{True}.
+
 
 \subsection{Global Variables}
 
@@ -120,6 +124,8 @@ We then push each of the global variables to the stack, evaluating its expressio
 
 While generating assembly code, a virtual stack pointer keeps track of the expected position of the global's value using a zero-based offset from the address in register 5.
 Hence, for the rest of the program's execution, register 5's sole purpose will be to help load and store global variables from their tracked offset.
+
+Note that, as mentioned in the previous section, lists and tuples live on the heap. Hence, if a global variable is of either type, only a pointer (i.e. an address) will be allocated.
 
 
 \subsection{Calling Convention}
