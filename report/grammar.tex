@@ -1,8 +1,5 @@
 \chapter{SPL Grammar}\label{ch:grammar}
 
-% \setlength{\grammarparsep}{20pt plus 1pt minus 1pt} % increase separation between rules
-\setlength{\grammarindent}{5em} % increase separation between LHS/RHS
-
 \begin{grammar}
 
 <SPL> ::= <Decl>+
@@ -40,8 +37,30 @@
 		\alt <FunCall> `;'
 		\alt `return' [ <Exp> ] `;'
 
-<Exp> ::= <id> <Field>
-	\todo[author=Aaron]{Op2 moet nog}
+% <Exp> ::= <id> <Field>
+% 	\alt <Exp> <Op2> <Exp>
+% 	\alt <Op1> <Exp>
+% 	\alt <int>
+% 	\alt <char>
+% 	\alt `False' | `True'
+% 	\alt `(' <Exp> `)'
+% 	\alt <FunCall>
+% 	\alt `[]'
+% 	\alt `(' <Exp> `,' <Exp> `)'
+
+<Expr> ::= <Exp2> `:' <Expr> | <Exp2>
+
+<Exp2> ::= <Exp3> `\textbar\textbar' <Exp2> | <Exp3>
+
+<Exp3> ::= <Exp4> `\&\&' <Exp3> | <Exp4>
+
+<Exp4> ::= <Exp5> (`==' | `\textless' | `\textgreater' | `\textless=' | `\textgreater=' | `!=') <Exp4> | <Exp5>
+
+<Exp5> ::= <Exp6> (`+' | `-') <Exp5> | <Exp6>
+
+<Exp6> ::= <ExpW> (`*' | `/' | `\%') <Exp6> | <ExpW>
+
+<ExpW> ::= <id> <Field>
 	\alt <Op1> <Exp>
 	\alt <int>
 	\alt <char>
@@ -58,10 +77,10 @@
 
 <ActArgs> ::= <Exp> [ `,' <ActArgs> ]
 
-<Op2> ::= `+' | `-' | `*' | `/' | `\%'
-	\alt `==' | `\textless' | `\textgreater' | `\textless=' | `\textgreater=' | `!='
-	\alt `\&\&' | `\textbar\textbar'
-	\alt `:'
+% <Op2> ::= `+' | `-' | `*' | `/' | `\%'
+% 	\alt `==' | `\textless' | `\textgreater' | `\textless=' | `\textgreater=' | `!='
+% 	\alt `\&\&' | `\textbar\textbar'
+% 	\alt `:'
 
 <Op1> ::= `!' | `-'
 

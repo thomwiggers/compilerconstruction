@@ -4,36 +4,72 @@
 \section{Changes to the grammar}
 
 In order to successfully implement an $LL$ parser, we first needed to eleminate left-recursive elements from the original SPL grammar.
-The elements in question were located in the \textsf{FArgs}, \textsf{Field}, and \textsf{Expr} rules.
+The elements in question were located in the \textsf{FArgs}, \textsf{Field}, and \textsf{Exp} rules.
 
-The first two of these were trivial to change.
-However, the latter required us to merge the binary operation clause with the \textsf{Op2} rule, yielding a new \textsf{BinOp} rule.
+For a complete overview of the implemented grammar, please see Appendix \ref{ch:grammar}.
+This section will detail the the changes made to the original grammar.
 
-For convenience, we will print the original and modified rules here.
+\subsection{Removing left recursion}
 
-\begin{grammar}
-<FArgs> ::= [ <FArgs> `,' ] <id> \\
-\textdownarrow
+The first two rules, \textsf{FArgs} and \textsf{Field}, were trivial to change.
+Hence, the transformed rules read as follows:
 
-<FArgs> ::= <id> [ `,' <FArgs> ]
+\begin{framed}
+	\begin{grammar}
+	<FArgs> ::= <id> [ `,' <FArgs> ]
 
-<Field> ::= [ <Field> `.' (`hd' | `tl' | `fst' | `snd') ] \\
-\textdownarrow
+	<Field> ::= [ `.' (`hd' | `tl' | `fst' | `snd') <Field> ]
+	\end{grammar}
+\end{framed}
 
-<Field> ::= [ `.' (`hd' | `tl' | `fst' | `snd') <Field> ]
-\end{grammar}
+However, the \textsf{Exp} field required more work to transform its binary operations.
 
-Additionally, the \textsf{FunType} rule was modified to make its arrow optional for functions without any arguments:
+\subsection{Transforming binary operations}
 
+The original grammar defined binary operations within the \textsf{Exp} rule as a combination of two expressions and an operator: \textsf{Exp} \textsf{Op2} \textsf{Exp}.
+We dealt with the left recursion here by unrolling the binary expressions, taking their operator precedence into account:
 
-\begin{grammar}
-<FunType> ::= [ <FTypes> ] `\textrightarrow' <RetType> \\
-\textdownarrow
+\begin{framed}
+	\begin{grammar}
+		<Exp> ::= <Exp2> `:' <Exp> | <Exp2>
 
-<FunType> ::= [ <FTypes> `\textrightarrow' ] <RetType>
-\end{grammar}
+		<Exp2> ::= <Exp3> `\textbar\textbar' <Exp2> | <Exp3>
 
-\todo[inline]{left recursion: function argument, expressions, fields\\ refer to grammar in appendix}
+		<Exp3> ::= <Exp4> `\&\&' <Exp3> | <Exp4>
+
+		<Exp4> ::= <Exp5> (`==' | `\textless' | `\textgreater' | `\textless=' | `\textgreater=' | `!=') <Exp4> | <Exp5>
+
+		<Exp5> ::= <Exp6> (`+' | `-') <Exp5> | <Exp6>
+
+		<Exp6> ::= <ExpW> (`*' | `/' | `\%') <Exp6> | <ExpW>
+
+		<ExpW> ::= <id> <Field>
+			\alt <Op1> <Exp>
+			\alt <int>
+			\alt <char>
+			\alt `False' | `True'
+			\alt `(' <Exp> `)'
+			\alt <FunCall>
+			\alt `[]'
+			\alt `(' <Exp> `,' <Exp> `)'
+	\end{grammar}
+\end{framed}
+
+The \textsf{Exp} rule now starts with an attempt to read a cons operation.
+If this fails, we fall through to the logical or operation, et cetera, until we ultimately reach what we call `weak' expressions, \textsf{ExpW}.
+
+Clearly, these new rules have removed left recursion, while retaining expressiveness of expressions.
+As an added bonus, the order of operations is now more clearly defined.
+
+\subsection{Additional changes}
+
+The \textsf{FunType} rule was modified to make its arrow optional for functions without any arguments:
+
+\begin{framed}
+	\begin{grammar}
+	<FunType> ::= [ <FTypes> `\textrightarrow' ] <RetType>
+	\end{grammar}
+\end{framed}
 
 \section{Parser Combinators}
 \todo[inline]{parser combinators, how do they work?, megaparsec}
