@@ -55,7 +55,7 @@ He implements type inference for an untyped lambda calculus, a language that is 
 But as he writes what he is doing fairly clearly and chooses his data structures well, we were able to extend this to SPL quite easily.
 
 Hindley-Milner type inference works by applying a set of type rules to the lines of code.
-When something isn't completely known, this is resolved by inserting a \emph{type variable}.
+When something is not completely known, this is resolved by inserting a \emph{type variable}.
 These variables will then later be \emph{unified} with (concrete) type information to get \emph{substitutions} that can be mapped over the environment again.
 By doing this, we apply the knowledge we gain in later bits of code to essentially check the previous bits of code, as substitutions only exist if two types are unifiable.
 We will discuss the type rules for SPL in Section~\ref{sec:typerules}.
@@ -189,7 +189,7 @@ We will not consider empty return statements separately, but it can easily be im
 \subsection{Plumbing}
 
 Composition is needed to allow to put two statements together.
-Because we resolve continuation in declarations separately, we don't need to handle state changes and can resolve expressions in parallel.
+Because we resolve continuation in declarations separately, we do not need to handle state changes and can resolve expressions in parallel.
 In practice, the collected unifiers need to be applied, so they are processed in sequence.
 \[
     \infer{\Gamma \vdash e_1;\;e_2 : \rho}{

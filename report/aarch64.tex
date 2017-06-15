@@ -11,7 +11,7 @@ It provides a quad-core CPU running at 1536 MHz and 2 gigabytes of RAM\@.
 
 AArch64 provides 31 general-purpose registers $r0, \ldots, r30$.
 This is excluding the stack pointer or the program counter.
-Return addresses aren't put on the stack but done through the special \emph{link register} (r30).
+Return addresses are not put on the stack but done through the special \emph{link register} (r30).
 This register can also be used as a callee-saved register where the value is written to memory.
 
 In general, instructions on ARM have got distinct inputs and an output.
@@ -79,11 +79,11 @@ This means that if a subroutine wishes to use them, it needs to save them to the
 
 Register allocation is typically done by first transforming the IR of your program into a form that is known as \emph{Single Static Assignment}.
 In this format, every variable is only assigned into once.
-It is also vital to divide your program in \emph{Basic Blocks} with only one entry point and exit, so the allocation algorithm doesn't need to account for control flow such as jumps.
+It is also vital to divide your program in \emph{Basic Blocks} with only one entry point and exit, so the allocation algorithm does not need to account for control flow such as jumps.
 This information allows to generate better dependency graphs which then helps when applying the actual register allocation.
 The register allocation is typically done via some graph colouring algorithm.
 If there exists a $K$-colouring of the graph where $K$ is the number of available registers, it is possible to assign registers.
-If this isn't possible, some values need to be \emph{spilled} to the stack and the algorithm is restarted.
+If this is not possible, some values need to be \emph{spilled} to the stack and the algorithm is restarted.
 
 Because transforming our IR to an SSA form did not appear to be trivial, we opted to ignore it and develop our own register allocation algorithm first.
 This is a more quick-and-dirty version that would also simply not be able to handle too many registers.
