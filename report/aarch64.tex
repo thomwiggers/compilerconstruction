@@ -57,6 +57,10 @@ The pointer is then incremented, such that it points to free heap space again.
 For printing \spl{Int} and \spl{Char} values we insert handwritten assembly functions into the generated code.
 For integers, our function \spl{printInt(i)} calls libc's \mintinline{c}{printf} as \mintinline{c}{printf("%d\n", i)}
 
+Characters are printed via a call to libc's \mintinline{c}{putwchar}.
+This function supports unicode characters, so it allows us to output any character we could imagine.
+Using this function does require to set the locale of the program.
+We put this code in our special startup \mintinline{c}{main} function.
 
 \section{Calling Convention}
 
@@ -108,16 +112,35 @@ The register allocator needs to know what the inputs are.
 In principle it should also be able to move them to other registers if necessary.
 For every function entry we therefor generate a \asm{mov} for each argument, from the hardware register in which it is passed in to a pseudo-register named after the argument.
 
-Before every function call we just spill all the caller-saved hardware registers.
+Before every function call we just spill all the caller-saved hardware registers and restore it after the function call.
 After this, we again generate \asm{mov}s, this time from the pseudo-registers that hold the arguments to the hardware registers that they should go on.
 
 Unfortunately, our register allocator currently is not capable of handling the extra constraints this puts on register allocation.
 This leads to functions with multiple arguments sometimes getting their arguments mixed up.
-This obviously leads to problems.
-
-\todo[inline,author=Thom]{Describe how we move registers, and how it breaks}
+This obviously leads to problems, ranging from wrong outputs to crashing programs.
 
 \section{Remaining Work}
 
+Aside from the register allocation the compiler to AArch64 is fairly complete.
+For a proper register allocator we would probably need to revisit the separation into basic blocks.
+They need better annotation about incoming and outgoing pseudo-registers.
+Next we would need to implement the transformation to Static Single Assignment.
+After that applying an algorithm to allocate registers based on graph colouring should be the next step.
+The approach known as Iterated Register Coalescing by George and Appel~\cite{IRC} seemed promising.
+It also includes a solution for the problem of determining what registers to spill, which is in itself an NP-hard problem.
+
+After this futher a possible further improvement could be instruction scheduling, although a lack of documentation on the instruction characteristics of AArch64 makes this difficult.
+Improving the toolchain to produce binaries instead of assembly code that still needs to be fed to a compiler like Clang or GCC would also improve the workflow.
+We currently need them to figure out the linking to the used library subroutines.
+
 \section{Reflection}
 
+Generating the code was not that difficult, since our IR was already designed with ARM assembly in mind.
+Register allocation proved a bit more challenging than expected.
+Our initial attempts at getting our IR in an SSA form stranded when we had problems linking up basic blocks.
+Abandoning proper register allocation worked great up until we tested functions with more arguments.
+
+While the IR was convenient for transforming the more basic elements to assembly, we oversimplified some elements like \spl{if}-statements.
+This lead to some inefficient code generation because we could not generate code with the test incorporated in the branching code.
+Instead, we needed to do the compare, store its result and then branch based on a comparison with that result again.
+A slightly higher-level IR would have allowed to do this in a better way, though perhaps at some cost of modularity.
