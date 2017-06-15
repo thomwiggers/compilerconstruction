@@ -66,6 +66,13 @@ After all, before this line the output value apparently did not make sense, sinc
 Meanwhile the inputs must have existed before this line, otherwise they could not have been inputs.
 We then annotate each line with the registers that are live at that point.
 
+The obtained information about the lifetimes of the registers can then be easily used to determine a register allocation.
+Since on every line it is known what registers are not needed anymore, we can drop reuse their assigned hardware registers.
+That way we do not assign values to registers for longer than necessary.
+
+\section{Incorporating the Calling Convention}
+
+\todo[inline,author=Thom]{Describe how we move registers, and how it breaks}
 
 \section{Remaining Work}
 
