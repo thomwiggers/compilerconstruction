@@ -144,6 +144,17 @@ Hence, if a global variable is of either type, only a pointer (i.e. an address) 
 
 
 \section{Reflection}
-\todo[inline]{IR too simple: loss of context, temporaries hard to distinguish (LDC, LDL) and thus aren't thrown away as they are treated like regular vars.}
 
+In retrospect, the intermediate representation we chose was \emph{too} simplified.
+While translating the program into instructions that more closely resembled that of a processor did make it easy to generate assembly instructions, the loss of context aso made it much more difficult to retroactively debug what a (pseudo-)register represented.
 
+Futhermore, unrolling expressions meant the generation of temporaries, which are then treated as any other variable by the code generator, generating many consecutive \texttt{LDC} and {LDL} invocations.
+
+Moreover, temporaries are not deleted in a timely manner.
+For functions, we did not find this to be too much of a problem, as they will be cleaned up at the end of a function's scope.
+However, global variables are initialised at the start of the program.
+Hence, their temporaries will pollute the stack during its entire run.
+
+Finally, we experienced difficulties finishing the code generator within the time allotted in the course's schedule.
+We found that, given another week, we were able to finish the entire SSM front-end.
+Regrettably, that meant we were unable to finish it completely for the presentation sessions.
