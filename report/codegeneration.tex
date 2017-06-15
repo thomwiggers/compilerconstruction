@@ -98,6 +98,25 @@ These may, for example, be used to place arguments on the stack, before calling 
 
 
 \section{Simple Stack Machine}
+
+The first compiler front-end we made was one for the Simple Stack Machine, or SSM \cite{SSM}, which in itself is simulated using Java.
+As its name suggests, an interesting property of the SSM is that most of its operations work on the stack, rather than registers.
+Hence, we made the choice not to allocate registers for variables, as they would need to be pushed on the stack anyway in order to do an operation on them.
+
+Aside from the normal stack, the SSM also offers heap allocation.
+In essence, this is another stack.
+However, unlike the normal stack, we make use of the heap to allocate lists and tuples.
+At the time of writing, no garbage collection has been implemented.
+Hence, an element of a list or tuple remains allocated, even if it is no longer referred to from the stack.
+
+
+\subsection{Global Variables}
+
+
+\subsection{Calling Convention}
+
+
+
 \todo[inline]{Explain how registers aren't needed, how stack works, globals on stack as pseudo-heap, lists and tuples on heap, calling convention}
 
 
