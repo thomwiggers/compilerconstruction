@@ -200,7 +200,7 @@ toAArch64 (SplBinaryOperation operator rd rn rm) = do
             SplOperatorGreater -> [CMP nReg mReg, CSET dReg Greater]
             SplOperatorGreaterEqual -> [CMP nReg mReg, CSET dReg GreaterEqual]
             SplOperatorAnd -> [AND dReg nReg mReg]
-            SplOperatorOr -> [OR dReg nReg mReg]
+            SplOperatorOr -> [ORR dReg nReg mReg]
             SplOperatorModulus -> [SDIV dReg nReg mReg, MSUB dReg dReg mReg nReg] -- Rd = Rn / Rm; Rd = -(Rd * Rm) + Rn
             SplOperatorCons -> [STP nReg mReg (Address heapPtr 0),
                                 MOV dReg heapPtr,

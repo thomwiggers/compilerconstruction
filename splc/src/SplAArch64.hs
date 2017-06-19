@@ -55,7 +55,7 @@ data AArch64Instruction
     | NEG Register Register
     | MSUB Register Register Register Register -- Rd = Ra - Rn * Rm (note Ra is last register!)
     | AND Register Register Register
-    | OR Register Register Register
+    | ORR Register Register Register
     | EOR Register Register Register
     | CMP          Register Register
     | CSET Register Condition
@@ -91,7 +91,7 @@ instance Show AArch64Instruction where
     show (NEG r a)             = "NEG" +++ r ++< a
     show (MSUB r a b c)        = "MSUB" +++ r ++< a ++< b ++< c
     show (AND r a b)           = "AND"  +++ r ++< a ++< b
-    show (OR r a b)            = "OR" +++ r ++< a ++< b
+    show (ORR r a b)            = "ORR" +++ r ++< a ++< b
     show (EOR r a b)           = "EOR" +++ r ++< a ++< b
     show (CMP a b)             = "CMP" +++ a ++< b
     show (CSET a c)            = "CSET" +++ a ++ ", " ++ asmCond c
