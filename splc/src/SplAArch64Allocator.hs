@@ -98,7 +98,7 @@ data AllocatorState = AllocatorState {
 
 emptyAllocatorState :: AllocatorState
 emptyAllocatorState = AllocatorState {
-        freeRegisters = [X i | i <- [0..7]],
+        freeRegisters = [X i | i <- [1..16]],
         usedRegisters = [],
         prToRegMap = Map.empty,
         parentRegisters = []

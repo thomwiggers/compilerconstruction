@@ -208,7 +208,7 @@ toSSM (SplBinaryOperation op rd r1 r2) = do
 toSSM (SplUnaryOperation op to from) = do
     load from
     case op of
-        SplOperatorInvert -> out NOT
+        SplOperatorInvert -> tell [LDC 0, SplSSM.EQ]
         SplOperatorNegate -> out NEG
     decreaseStackPointer
     store to

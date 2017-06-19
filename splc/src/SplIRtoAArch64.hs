@@ -233,16 +233,17 @@ toAArch64 (SplMov rd rm) = do
 toAArch64 (SplMovImm rd i) = do
     (storeCode, dReg) <- store rd
     let opCode = case i of
-            SplImmInt n -> [MOV dReg (Imm $ fromInteger n)]
+            SplImmInt n -> encodeInt dReg (fromInteger n)
             SplImmBool b -> [MOV dReg (Imm $ if b then 1 else 0)]
-            SplImmChar c ->
-                let charCode = ord c in
-                if charCode < 65536 -- < 2^16
-                    then [MOV dReg (Imm charCode)]
-                    -- encode higher unicode characters by adding up two 16-bit imms
-                    else [MOV dReg (Imm (charCode `mod` 65536)),
-                          MOVK dReg (Imm (charCode - (charCode `mod` 65536)))]
+            SplImmChar c -> encodeInt dReg (ord c)
     return $ opCode ++ storeCode
+    where
+        encodeInt dReg input =
+                if input < 65536 -- < 2^16
+                    then [MOV dReg (Imm input)]
+                    -- encode higher unicode characters by adding up two 16-bit imms
+                    else [MOV dReg (Imm (input `mod` 65536)),
+                          MOVK dReg (Imm (input - (input `mod` 65536)))]
 
 -- return
 toAArch64 (SplRet Nothing) = do
@@ -261,7 +262,7 @@ toAArch64 (SplCall label maybeResult args) = do
     (argInstrs, argRegs) <- unzip <$> mapM load regArgs
 
     -- spill x0-x7,
-    spillInstrs <- concat <$> mapM spill [X i | i <- [0..7]]
+    spillInstrs <- concat <$> mapM spill [X i | i <- [0..16]]
 
     -- put arguments in right registers
     let regArgMovs = zipWith MOV [X i | i <- [0..]] argRegs
@@ -366,14 +367,14 @@ toAArch64 (SplWhile label (condIR, cond) bodyIR) = do
     let endLabel = label ++ "end"
     condCode <- concat <$> mapM toAArch64 condIR
     (condRegCode, condReg) <- load cond
-    let condBlock = BasicBlock $ [Label label] ++
-                     condCode ++ condRegCode ++
-                     [CMP condReg (Imm 0),
-                     BranchConditional Equal endLabel]
-
     bodyCode <- concat <$> mapM toAArch64 bodyIR
     let bodyBlock = BasicBlock $ bodyCode ++
                                 [BranchAlways label,
                                  Label endLabel]
+    let condBlock = BasicBlock $ [Label label] ++
+                     condCode ++ condRegCode ++
+                     [CMP condReg (Imm 0),
+                     BranchConditional Equal endLabel,
+                     bodyBlock]
 
-    return [condBlock, bodyBlock]
+    return [condBlock]
