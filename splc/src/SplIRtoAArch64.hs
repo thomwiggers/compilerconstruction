@@ -290,6 +290,8 @@ toAArch64 (SplCall label maybeResult args) = do
 
     -- restore spilled registers
     let (unspillX0 : unspillInstrs) = map (\(STR r a) -> LDR r a) spillInstrs
+    -- restore sp to normality
+    modify $ \st -> st{frameSize = fs - (length unspillInstrs + 1) * wordLength}
 
     return $ concat argInstrs ++
             spillInstrs ++
