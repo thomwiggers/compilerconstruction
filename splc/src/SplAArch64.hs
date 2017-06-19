@@ -1,6 +1,7 @@
 module SplAArch64 (module SplAArch64) where
 
-import           Prelude hiding (EQ, GT, LT)
+import           Data.Bits
+import           Prelude   hiding (EQ, GT, LT)
 
 type Offset = Int
 type Size = Int
@@ -95,6 +96,9 @@ instance Show AArch64Instruction where
     show (CMP a b)             = "CMP" +++ a ++< b
     show (CSET a c)            = "CSET" +++ a ++ ", " ++ asmCond c
     show (MOV r a)             = "MOV" +++ r ++< a
+    show (MOVK r (Imm a))
+        | a < 65536            = "MOVK" +++ r ++< Imm a
+        | otherwise            = "MOVK" +++ r ++< Imm (a `shift` (-16)) ++ ", LSL 16"
     show (MOVK r a)            = "MOVK" +++ r ++< a
     show (BranchConditional cond label)
                                = "B." ++ asmCond cond ++ " " ++ label
@@ -114,4 +118,4 @@ instance Show AArch64Instruction where
 
 functionName :: String -> String
 functionName "main" = "_splmain"
-functionName a = a
+functionName a      = a

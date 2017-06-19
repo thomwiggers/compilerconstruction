@@ -27,6 +27,7 @@ initFunction = unlines [
         "bl _splmain",
         "ldr x28, [sp, #0]!",
         "ldp    x29, x30, [sp], 16",
+        "mov    x0, #0",
         "ret"
     ]
 
@@ -52,7 +53,7 @@ printInt = unlines [
         "MOV   w1, w0",
         "ADRP  x0, .INT_FORMAT_STRING",
         "ADD   x0, x0, :lo12:.INT_FORMAT_STRING",
-        "BL    printf",
+        "BL    wprintf",
         "LDP   x29, x30, [sp], 16",
         "RET"
     ]
@@ -62,8 +63,11 @@ constants = unlines [
     ".section .rodata.str1.8,\"aMS\",@progbits,1",
     ".align   3",
     ".INT_FORMAT_STRING:",
-    ".string   \"%d\\n\"",
-    ".zero    4",
+    ".long      37         // %",
+    ".long      100        // d",
+    ".long      10         // \\n",
+    ".long       0",
+    ".size       .INT_FORMAT_STRING, 16",
     ".LOCALE_STRING:",
     ".string    \"en_US.UTF-8\"",
     ".data",
