@@ -3,7 +3,7 @@ module SplAArch64Allocator (allocateRegisters, annotateInstructions) where
 import Control.Arrow (second)
 import           Control.Monad.State
 
-import           Data.List           (delete, (\\))
+import           Data.List           (delete, (\\), sort)
 import qualified Data.Map.Strict     as Map
 import           Data.Maybe
 import qualified Data.Set            as Set
@@ -98,7 +98,7 @@ data AllocatorState = AllocatorState {
 
 emptyAllocatorState :: AllocatorState
 emptyAllocatorState = AllocatorState {
-        freeRegisters = [X i | i <- [0..27]],
+        freeRegisters = [X i | i <- [0..7]],
         usedRegisters = [],
         prToRegMap = Map.empty,
         parentRegisters = []
@@ -118,7 +118,7 @@ releaseRegister reg@(X _) = do
     regs <- gets freeRegisters
     when (reg `elem` regs) $
         error $ "compiler error: register " ++ show reg ++ " has already been freed"
-    modify $ \st -> st{freeRegisters = reg : regs,
+    modify $ \st -> st{freeRegisters = sort $ reg : regs,
                        usedRegisters = delete reg $ usedRegisters st}
 releaseRegister _ = error "Compiler error: releaseRegister only works on real registers for now"
 
@@ -237,7 +237,7 @@ assignRegistersToInstruction (BasicBlock instrs) = do
 cleanupInstructions :: [AArch64Instruction] -> [AArch64Instruction]
 cleanupInstructions [] = []
 cleanupInstructions (m@(MOV a b) : xs)
-    | a == b = cleanupInstructions xs
+    | a == b = Comment (show m) : cleanupInstructions xs
     | otherwise = m : cleanupInstructions xs
 cleanupInstructions (NOP : xs) = cleanupInstructions xs
 cleanupInstructions (x:xs) = x : cleanupInstructions xs

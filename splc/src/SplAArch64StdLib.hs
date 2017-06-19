@@ -23,7 +23,7 @@ initFunction = unlines [
         "adrp   x28, .HEAP",
         "add    x28, x28, :lo12:.HEAP",
         "// initialize global variables",
-        "bl initGlobals",
+        "bl _initGlobals",
         "bl _splmain",
         "ldr x28, [sp, #0]!",
         "ldp    x29, x30, [sp], 16",

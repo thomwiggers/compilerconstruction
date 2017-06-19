@@ -80,7 +80,7 @@ programToAArch64 ir = do
     let globMap = Map.fromList [(PR x, Global) | x <- globalNames]
     modify $ \st -> st{globalMap = globMap}
 
-    globalCode <- toAArch64 (SplFunction "initGlobals" [] decls)
+    globalCode <- toAArch64 (SplFunction "_initGlobals" [] decls)
     functionCode <- concat <$> mapM toAArch64 functions
 
     return (globalCode, functionCode, globalNames)
