@@ -123,7 +123,9 @@ instance ToIR SplStmt where
     toIR (SplAssignmentStmt name field expr) = do
         (exprIR, resultRegister) <- exprToIR expr
         let wrappedReg = wrapField field (Reg name)
-        let exprIR' = map (replaceName resultRegister wrappedReg) exprIR
+        let exprIR' = case exprIR of
+                [] -> [SplMov wrappedReg resultRegister]
+                _  -> map (replaceName resultRegister wrappedReg) exprIR
         return exprIR'
 
     toIR (SplFuncCallStmt name args) = do
